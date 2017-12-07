@@ -5,11 +5,9 @@
 # FLAGS += -D v040
 FLAGS += -D v_050_dev
 
-SOURCES = $(wildcard src/*.cpp portaudio/*.c)
+SOURCES = $(wildcard src/*.cpp)
 
 include ../../plugin.mk
-
-FLAGS += -Iportaudio
 
 dist: all
 	mkdir -p dist/aepelzen
