@@ -262,28 +262,29 @@ QuadSeqWidget::QuadSeqWidget() {
   addChild(createScrew<ScrewSilver>(Vec(15, 365)));
   addChild(createScrew<ScrewSilver>(Vec(box.size.x-30, 365)));
 
-  addParam(createParam<RoundSmallBlackKnob>(Vec(56, 56), module, QuadSeq::CLOCK_PARAM, -2.0, 6.0, 2.0));
-  addParam(createParam<LEDButton>(Vec(60, 95), module, QuadSeq::RUN_PARAM, 0.0, 1.0, 0.0));
-  addChild(createLight<MediumLight<GreenLight>>(Vec(64.4, 99.4), module, QuadSeq::RUNNING_LIGHT));
-  addParam(createParam<LEDButton>(Vec(60, 125), module, QuadSeq::RESET_PARAM, 0.0, 1.0, 0.0));
-  addChild(createLight<MediumLight<GreenLight>>(Vec(64.4, 129.4), module, QuadSeq::RESET_LIGHT));
+  //original 56
+  addParam(createParam<RoundSmallBlackKnob>(Vec(56, 35), module, QuadSeq::CLOCK_PARAM, -2.0, 6.0, 2.0));
+  addParam(createParam<LEDButton>(Vec(60, 82), module, QuadSeq::RUN_PARAM, 0.0, 1.0, 0.0));
+  addChild(createLight<MediumLight<GreenLight>>(Vec(64.4, 86.4), module, QuadSeq::RUNNING_LIGHT));
+  addParam(createParam<LEDButton>(Vec(60, 120), module, QuadSeq::RESET_PARAM, 0.0, 1.0, 0.0));
+  addChild(createLight<MediumLight<GreenLight>>(Vec(64.4, 124.4), module, QuadSeq::RESET_LIGHT));
+
+  addInput(createInput<PJ301MPort>(Vec(20, 36), module, QuadSeq::CLOCK_INPUT));
+  addInput(createInput<PJ301MPort>(Vec(20, 79), module, QuadSeq::EXT_CLOCK_INPUT));
+  addInput(createInput<PJ301MPort>(Vec(20, 117), module, QuadSeq::RESET_INPUT));
+
 
   for (int i=0;i<NUM_CHANNELS;i++) {
     //addParam(createParam<RoundSmallBlackKnob>(Vec(135 + i*48, 56), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
-    addParam(createParam<RoundSmallBlackKnob>(Vec(105 + i*55, 56), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
+    addParam(createParam<RoundSmallBlackKnob>(Vec(105 + i*55, 50), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
     addParam(createParam<Trimpot>(Vec(98 + i*55, 105), module, QuadSeq::CHANNEL_RANGE_PARAM + i, 0.0, 1.0, 1.0));
     addParam(createParam<Trimpot>(Vec(120 + i*55, 105), module, QuadSeq::CHANNEL_MODE_PARAM + i, 0, 5, 0));
     addInput(createInput<PJ301MPort>(Vec(18 + i*38, 350), module, QuadSeq::CHANNEL_CLOCK_INPUT + i));
     addOutput(createOutput<PJ301MPort>(Vec(172 + i*38, 350), module, QuadSeq::ROW1_OUTPUT + i));
     for (int y = 0; y < 8; y++) {
       //addParam(createParam<RoundSmallBlackKnob>(Vec(18 + y*38 ,175 + i*41), module, QuadSeq::ROW1_PARAM + y + i*8, 0.0, 10.0, 0.0));
-      addParam(createParam<Knob29>(Vec(18 + y*38 ,175 + i*41), module, QuadSeq::ROW1_PARAM + y + i*8, 0.0, 10.0, 0.0));
-      addChild(createLight<SmallLight<RedLight>>(Vec(26.4 + y*38, 205 + i*41), module, QuadSeq::CHANNEL_LIGHTS + y + i*8));
+      addParam(createParam<Knob29>(Vec(18 + y*38 ,170 + i*41), module, QuadSeq::ROW1_PARAM + y + i*8, 0.0, 10.0, 0.0));
+      addChild(createLight<SmallLight<RedLight>>(Vec(26.4 + y*38, 200 + i*41), module, QuadSeq::CHANNEL_LIGHTS + y + i*8));
     }
   }
-
-  addInput(createInput<PJ301MPort>(Vec(20, 60), module, QuadSeq::CLOCK_INPUT));
-  addInput(createInput<PJ301MPort>(Vec(20, 91), module, QuadSeq::EXT_CLOCK_INPUT));
-  addInput(createInput<PJ301MPort>(Vec(20, 122), module, QuadSeq::RESET_INPUT));
-
 }

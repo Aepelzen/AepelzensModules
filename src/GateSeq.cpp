@@ -5,7 +5,7 @@ const int NUM_STEPS = 16;
 const int NUM_CHANNELS = 8;
 const int NUM_GATES = NUM_STEPS * NUM_CHANNELS;
 
-struct GateSEQ8 : Module {
+struct GateSeq : Module {
 
 	enum ParamIds {
 		CLOCK_PARAM,
@@ -65,7 +65,7 @@ struct GateSEQ8 : Module {
 	PulseGenerator gatePulse[NUM_CHANNELS];
 	float prob = 0;
 
-	GateSEQ8() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
+	GateSeq() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
 	void step() override;
 
 	json_t *toJson() override {
@@ -108,7 +108,7 @@ struct GateSEQ8 : Module {
 };
 
 
-void GateSEQ8::step() {
+void GateSeq::step() {
 	#ifdef v_050_dev
 	float gSampleRate = engineGetSampleRate();
 	#endif
@@ -209,17 +209,17 @@ struct MuteLight : BASE {
 	}
 };
 
-GateSEQ8Widget::GateSEQ8Widget() {
-	//printf("Parameter count %i:\n", GateSEQ8::NUM_PARAMS);
-  //printf("Gate Param: %i, Step_Param: %i\n", GateSEQ8::GATE1_PARAM, GateSEQ8::CHANNEL_STEPS_PARAM);
-	GateSEQ8 *module = new GateSEQ8();
+GateSeqWidget::GateSeqWidget() {
+	//printf("Parameter count %i:\n", GateSeq::NUM_PARAMS);
+  //printf("Gate Param: %i, Step_Param: %i\n", GateSeq::GATE1_PARAM, GateSeq::CHANNEL_STEPS_PARAM);
+	GateSeq *module = new GateSeq();
 	setModule(module);
 	box.size = Vec(525, 380);
 
 	{
 		SVGPanel *panel = new SVGPanel();
 		panel->box.size = box.size;
-		panel->setBackground(SVG::load(assetPlugin(plugin, "res/GateSEQ8.svg")));
+		panel->setBackground(SVG::load(assetPlugin(plugin, "res/GateSeq.svg")));
 		addChild(panel);
 	}
 
@@ -228,30 +228,30 @@ GateSEQ8Widget::GateSEQ8Widget() {
 	addChild(createScrew<ScrewSilver>(Vec(15, 365)));
 	addChild(createScrew<ScrewSilver>(Vec(box.size.x-30, 365)));
 
-	addParam(createParam<RoundSmallBlackKnob>(Vec(17, 56), module, GateSEQ8::CLOCK_PARAM, -2.0, 10.0, 2.0));
-	addParam(createParam<LEDButton>(Vec(60, 61-1), module, GateSEQ8::RUN_PARAM, 0.0, 1.0, 0.0));
-	addChild(createLight<SmallLight<GreenLight>>(Vec(60+6, 61+5), module, GateSEQ8::RUNNING_LIGHT));
-	addParam(createParam<LEDButton>(Vec(98, 61-1), module, GateSEQ8::RESET_PARAM, 0.0, 1.0, 0.0));
-	addChild(createLight<SmallLight<GreenLight>>(Vec(98+6, 61+5), module, GateSEQ8::RESET_LIGHT));
-	addParam(createParam<RoundSmallBlackSnapKnob>(Vec(132, 56), module, GateSEQ8::STEPS_PARAM, 1.0, NUM_STEPS, NUM_STEPS));
+	addParam(createParam<RoundSmallBlackKnob>(Vec(17, 56), module, GateSeq::CLOCK_PARAM, -2.0, 10.0, 2.0));
+	addParam(createParam<LEDButton>(Vec(60, 61-1), module, GateSeq::RUN_PARAM, 0.0, 1.0, 0.0));
+	addChild(createLight<SmallLight<GreenLight>>(Vec(60+6, 61+5), module, GateSeq::RUNNING_LIGHT));
+	addParam(createParam<LEDButton>(Vec(98, 61-1), module, GateSeq::RESET_PARAM, 0.0, 1.0, 0.0));
+	addChild(createLight<SmallLight<GreenLight>>(Vec(98+6, 61+5), module, GateSeq::RESET_LIGHT));
+	addParam(createParam<RoundSmallBlackSnapKnob>(Vec(132, 56), module, GateSeq::STEPS_PARAM, 1.0, NUM_STEPS, NUM_STEPS));
 
 	static const float portX[8] = {19, 57, 96, 134, 173, 211, 250, 288};
-	addInput(createInput<PJ301MPort>(Vec(portX[0]-1, 99-1), module, GateSEQ8::CLOCK_INPUT));
-	addInput(createInput<PJ301MPort>(Vec(portX[1]-1, 99-1), module, GateSEQ8::EXT_CLOCK_INPUT));
-	addInput(createInput<PJ301MPort>(Vec(portX[2]-1, 99-1), module, GateSEQ8::RESET_INPUT));
-	addInput(createInput<PJ301MPort>(Vec(portX[3]-1, 99-1), module, GateSEQ8::STEPS_INPUT));
+	addInput(createInput<PJ301MPort>(Vec(portX[0]-1, 99-1), module, GateSeq::CLOCK_INPUT));
+	addInput(createInput<PJ301MPort>(Vec(portX[1]-1, 99-1), module, GateSeq::EXT_CLOCK_INPUT));
+	addInput(createInput<PJ301MPort>(Vec(portX[2]-1, 99-1), module, GateSeq::RESET_INPUT));
+	addInput(createInput<PJ301MPort>(Vec(portX[3]-1, 99-1), module, GateSeq::STEPS_INPUT));
 
 	for (int y = 0; y < NUM_CHANNELS; y++) {
 		for (int x = 0; x < NUM_STEPS; x++) {
 			int i = y*NUM_STEPS+x;
-			// addParam(createParam<LEDButton>(Vec(32 + x*25, 155+y*25+3), module, GateSEQ8::GATE1_PARAM + i, 0.0, 1.0, 0.0));
-			// addChild(createLight<SmallLight<GreenLight>>(Vec(38 + x*25, 156+y*25+8), module, GateSEQ8::GATE_LIGHTS + i));
-			addParam(createParam<LEDBezel>(Vec(32 + x*25, 155+y*25), module, GateSEQ8::GATE1_PARAM + i, 0.0, 1.0, 0.0));
-			addChild(createLight<MuteLight<GreenLight>>(Vec(32 + x*25 + 2, 155+y*25+2), module, GateSEQ8::GATE_LIGHTS + i));
+			// addParam(createParam<LEDButton>(Vec(32 + x*25, 155+y*25+3), module, GateSeq::GATE1_PARAM + i, 0.0, 1.0, 0.0));
+			// addChild(createLight<SmallLight<GreenLight>>(Vec(38 + x*25, 156+y*25+8), module, GateSeq::GATE_LIGHTS + i));
+			addParam(createParam<LEDBezel>(Vec(32 + x*25, 155+y*25), module, GateSeq::GATE1_PARAM + i, 0.0, 1.0, 0.0));
+			addChild(createLight<MuteLight<GreenLight>>(Vec(32 + x*25 + 2, 155+y*25+2), module, GateSeq::GATE_LIGHTS + i));
 		}
-		addInput(createInput<PJ301MPort>(Vec(5, 155+y*25 - 1), module, GateSEQ8::CHANNEL_CLOCK_INPUT + y));
-		addOutput(createOutput<PJ301MPort>(Vec(435, 155+y*25), module, GateSEQ8::GATE1_OUTPUT + y));
-		addParam(createParam<Trimpot>(Vec(465, 155+y*25+3), module, GateSEQ8::CHANNEL_STEPS_PARAM + y, 1.0, NUM_STEPS, NUM_STEPS));
-		addParam(createParam<Trimpot>(Vec(485, 155+y*25+3), module, GateSEQ8::CHANNEL_PROB_PARAM + y, 0.0, 1.0, 1.0));
+		addInput(createInput<PJ301MPort>(Vec(5, 155+y*25 - 1), module, GateSeq::CHANNEL_CLOCK_INPUT + y));
+		addOutput(createOutput<PJ301MPort>(Vec(435, 155+y*25), module, GateSeq::GATE1_OUTPUT + y));
+		addParam(createParam<Trimpot>(Vec(465, 155+y*25+3), module, GateSeq::CHANNEL_STEPS_PARAM + y, 1.0, NUM_STEPS, NUM_STEPS));
+		addParam(createParam<Trimpot>(Vec(485, 155+y*25+3), module, GateSeq::CHANNEL_PROB_PARAM + y, 0.0, 1.0, 1.0));
 	}
 }

@@ -14,8 +14,8 @@ struct TriSEQ3Widget : ModuleWidget {
 	void fromJsonData(json_t *root);
 };
 
-struct GateSEQ8Widget : ModuleWidget {
-	GateSEQ8Widget();
+struct GateSeqWidget : ModuleWidget {
+	GateSeqWidget();
 	json_t *toJsonData();
 	void fromJsonData(json_t *root);
 };
