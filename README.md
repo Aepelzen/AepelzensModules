@@ -9,8 +9,7 @@ Furthermore each channel has a probability setting that sets the probability tha
 
 ## QuadSeq
 
-A four channel sequencer. Like GateSeq each channel has it's own clock input (the 4 inputs on the bottom left) and length.
-The mode parameter sets one of the following playback modes:
+A four channel sequencer (The knobs are made by bogaudio). Like GateSeq each channel has it's own clock input (the 4 inputs on the bottom left) and length. The mode parameter sets one of the following playback modes:
 * Forward
 * Backwad
 * Alternating
