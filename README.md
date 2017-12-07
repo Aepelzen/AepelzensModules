@@ -1,6 +1,6 @@
 # VCV Rack plugins
 
-![screenshot](https://github.com/Aepelzen/AepelzensPlugins/blob/master/images/screenshot.png)
+![screenshot](https://github.com/Aepelzen/AepelzensModules/blob/master/images/screenshot.png)
 
 ## GateSeq
 
