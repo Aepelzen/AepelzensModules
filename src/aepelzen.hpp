@@ -8,12 +8,6 @@ extern Plugin *plugin;
 // module widgets
 ////////////////////
 
-struct TriSEQ3Widget : ModuleWidget {
-	TriSEQ3Widget();
-	json_t *toJsonData();
-	void fromJsonData(json_t *root);
-};
-
 struct GateSeqWidget : ModuleWidget {
 	GateSeqWidget();
 	json_t *toJsonData();
@@ -24,9 +18,9 @@ struct QuadSeqWidget : ModuleWidget {
 	QuadSeqWidget();
 };
 
-struct dTimeWidget : ModuleWidget {
-	dTimeWidget();
-};
+// struct dTimeWidget : ModuleWidget {
+// 	dTimeWidget();
+// };
 
 struct Knob29 : RoundKnob {
 	Knob29() {
