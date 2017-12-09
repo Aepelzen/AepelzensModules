@@ -36,6 +36,12 @@ struct BurstWidget : ModuleWidget
   //void step() override;
 };
 
+struct FolderWidget : ModuleWidget
+{
+	SVGPanel *panel;
+	FolderWidget();
+};
+
 struct QuantumWidget : ModuleWidget {
 	QuantumWidget();
 	json_t *toJsonData() ;
