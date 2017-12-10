@@ -40,6 +40,17 @@ struct Burst : Module
       NUM_LIGHTS
     };
 
+  enum CvModes
+    {
+      CV_UP,
+      CV_DOWN,
+      CV_MODE3,
+      CV_MODE4,
+      CV_MODE_RANDOMP,
+      CV_MODE_RANDOMN,
+      CV_MODE_RANDOM,
+    };
+
   int panel = 0;
   float timeParam = 0;
   float clockedTimeParam = 0;
@@ -49,6 +60,7 @@ struct Burst : Module
   int pulseCount = 0;
   int pulses = 4;
   float delta = 0;
+  float randomcv = 0;
 
   SchmittTrigger m_buttonTrigger;
   SchmittTrigger gateTrigger;;
@@ -64,7 +76,9 @@ struct Burst : Module
 
   void step() override;
 
-  Burst() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
+  Burst() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
+    reset();
+  }
 
   void reset() override
   {
@@ -101,6 +115,7 @@ void Burst::step()
   float accel = params[ACCEL_PARAM].value;
   float jitter = params[JITTER_PARAM].value;
   float randomDelta = 0;
+  float cvOut = 0;  
 
   timeParam = clampf(params[TIME_PARAM].value + (params[TIME_ATT_PARAM].value * inputs[TIME_INPUT].value / 5.0 * MAX_TIME),0.0, MAX_TIME);
   pulseParam = clampf(params[REP_PARAM].value + (inputs[REP_INPUT].value * params[REP_ATT_PARAM].value /5.0 * MAX_REPS), 0.0, MAX_REPS);
@@ -147,6 +162,7 @@ void Burst::step()
     }
     gateOutLength = (params[GATE_MODE_PARAM].value) ? 0.01 : seconds/2;
     outPulse.trigger(gateOutLength);
+    randomcv = randomf();
   }
 
   if (schmittValue || m_buttonTrigger.process(params[BUTTON_PARAM].value)) {
@@ -156,16 +172,47 @@ void Burst::step()
     outPulse.trigger(gateOutLength);
     seconds = timeParam;
     pulses = pulseParam;
+    //outputs[CV_OUTPUT].value = 0;
+    cvOut = 0;
   }
 
-    //manual trigger
-  // if (m_buttonTrigger.process(params[BUTTON_PARAM].value)) {
-  //   outPulse.trigger(0.01);
-  // }
+  //cv
+  float cvDelta = 5.0/pulses;
+  int mode = roundf(params[CV_MODE_PARAM].value);
+  switch (mode) {
+  case CV_UP:
+    cvOut = pulseCount * cvDelta;
+    break;
+  case CV_DOWN:
+    cvOut = pulseCount * cvDelta * (-1);
+    break;
+  case CV_MODE3:
+    cvOut = trunc((pulseCount + 1)/2) * cvDelta;
+    if(pulseCount % 2 == 1) {
+      cvOut *= -1;
+    }
+    break;
+  case CV_MODE4:
+    cvOut = pulseCount * cvDelta;
+    if(pulseCount %2 == 1) {
+      cvOut *= -1;
+    }
+    break;
+  case CV_MODE_RANDOMP:
+    cvOut = randomcv *5.0;
+    break;
+  case CV_MODE_RANDOMN:
+    cvOut = randomcv * (-5.0);
+    break;
+  case CV_MODE_RANDOM:
+    cvOut = randomcv *10 - 5;
+    break;
+  }
 
   timer += delta;
   outputs[GATE_OUTPUT].value = outPulse.process(delta) ? 10.0 : 0.0;
   outputs[EOC_OUTPUT].value = eocPulse.process(delta) ? 10.0 : 0.0;
+  outputs[CV_OUTPUT].value = (timer < seconds) ? cvOut : 0.0;
 }
 
 
@@ -194,7 +241,7 @@ BurstWidget::BurstWidget()
   addParam(createParam<RoundSmallBlackKnob>(Vec(10, 150), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
   addParam(createParam<RoundSmallBlackKnob>(Vec(52, 150), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
   addParam(createParam<RoundSmallBlackKnob>(Vec(10, 195), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 8, 0));
+  addParam(createParam<RoundSmallBlackKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 6, 0));
 
   addParam(createParam<Trimpot>(Vec(15.5, 240), module, Burst::REP_ATT_PARAM, -1.0, 1.0, 0.0));
   addParam(createParam<Trimpot>(Vec(54, 240), module, Burst::TIME_ATT_PARAM, -1.0, 1.0, 0.0));
