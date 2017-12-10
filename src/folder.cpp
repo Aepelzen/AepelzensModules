@@ -1,5 +1,9 @@
 #include "aepelzen.hpp"
 #include "dsp/digital.hpp"
+#include <samplerate.h>
+
+#define BUF_LEN 32
+#define UPSAMPLE_RATIO 8
 
 struct Folder : Module
 {
@@ -32,8 +36,16 @@ struct Folder : Module
 
   void step() override;
 
-  Folder() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
+  Folder() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
+    state = src_new(SRC_SINC_MEDIUM_QUALITY, 1, &error);
+    state_down = src_new(SRC_SINC_MEDIUM_QUALITY, 1, &error);
+  }
 
+  ~Folder() {
+    src_delete(state);
+    src_delete(state_down);
+  }
+  
   void reset() override
   {
     onSampleRateChange();
@@ -44,6 +56,20 @@ struct Folder : Module
   void randomize() override  {}
   // json_t *toJson() override {}
   // void fromJson(json_t *rootJ) override {}
+
+  float in, out, gain, sym;
+  float threshold = 1.0;
+
+  //variables for samplerate converter
+  SRC_DATA data;
+  SRC_DATA data_down;
+  SRC_STATE* state;
+  SRC_STATE* state_down;
+  int error = 0;
+  int frame = 0;
+  float in_buffer[BUF_LEN] = {};
+  float out_buffer[UPSAMPLE_RATIO*BUF_LEN] = {};
+  float folded_buffer[BUF_LEN] = {};
 };
 
 float fold(float in, float threshold) {
@@ -71,24 +97,57 @@ float fold3(float in, float t) {
   return out;
 }
 
-float in, out, gain, sym;
-float threshold = 1.0;
 
 void Folder::step()
 {
-  gain = clampf(params[GAIN_PARAM].value + (inputs[GAIN_INPUT].value * 2 * params[GAIN_ATT_PARAM].value), 0.0,10.0);
-  sym = clampf(params[SYM_PARAM].value + inputs[SYM_INPUT].value * params[SYM_ATT_PARAM].value, -1.0, 1.0);
+  gain = clampf(params[GAIN_PARAM].value + (inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value), 0.0,10.0);
+  sym = clampf(params[SYM_PARAM].value + inputs[SYM_INPUT].value/5.0 * params[SYM_ATT_PARAM].value, -1.0, 1.0);
   in = (inputs[GATE_INPUT].value/5.0 + sym) * gain;
   
-  out = in;
-  int stages = (int)(params[STAGE_PARAM].value)*2;
-  for (int i=0;i<stages;i++) {
-    out = fold3(out, threshold);
+  // out = in;
+  // int stages = (int)(params[STAGE_PARAM].value)*2;
+  // for (int i=0;i<stages;i++) {
+  //   out = fold3(out, threshold);
+  // }
+  // out = tanh(out);
+
+  if(++frame >= BUF_LEN) {
+    //upsampling
+    data.data_in = in_buffer;
+    data.data_out = out_buffer;
+    data.input_frames = BUF_LEN;
+    data.output_frames = UPSAMPLE_RATIO*BUF_LEN;
+    data.src_ratio = UPSAMPLE_RATIO;
+    data.end_of_input = 0;
+
+    src_process(state, &data);
+
+    //fold
+    int stages = (int)(params[STAGE_PARAM].value)*2;
+    for(int i=0;i<UPSAMPLE_RATIO*BUF_LEN;i++) {   
+      for (int y=0;y<stages;y++) {
+      	out_buffer[i] = fold3(out_buffer[i], threshold);
+      }
+      //out_buffer[i] = fold(out_buffer[i], threshold);
+      out_buffer[i] = tanh(out_buffer[i]);
+    }
+
+    //downsampling
+    data_down.data_in = out_buffer;
+    data_down.data_out = folded_buffer;
+    data_down.input_frames = BUF_LEN*UPSAMPLE_RATIO;
+    data_down.output_frames = BUF_LEN;
+    data_down.src_ratio = 1.0/UPSAMPLE_RATIO;
+    data_down.end_of_input = 0;
+    src_process(state_down, &data_down);
+    frame = 0;
   }
 
-  out = tanh(out);
-  //out = clampf(out, -1.0, 1.0);
-  outputs[GATE_OUTPUT].value = out * 5.0;
+  in_buffer[frame] = in;
+
+  //out = out_buffer[UPSAMPLE_RATIO*frame] * 5.0;
+  out = folded_buffer[frame] * 5.0;
+  outputs[GATE_OUTPUT].value = out;
   return;
 }
 
