@@ -45,7 +45,7 @@ struct Folder : Module
     src_delete(state);
     src_delete(state_down);
   }
-  
+
   void reset() override
   {
     onSampleRateChange();
@@ -54,11 +54,24 @@ struct Folder : Module
   void onSampleRateChange() override {}
 
   void randomize() override  {}
-  // json_t *toJson() override {}
-  // void fromJson(json_t *rootJ) override {}
+
+  json_t *toJson() override {
+    json_t *rootJ = json_object();
+    json_object_set_new(rootJ, "alternativeMode", json_boolean(alternativeMode));
+    return rootJ;
+  }
+
+  void fromJson(json_t *rootJ) override {
+    json_t *modeJ = json_object_get(rootJ, "alternativeMode");
+      if(modeJ) {
+	alternativeMode = json_boolean_value(modeJ);
+      }
+  }
 
   float in, out, gain, sym;
   float threshold = 1.0;
+
+  bool alternativeMode = false;
 
   //variables for samplerate converter
   SRC_DATA data;
@@ -103,7 +116,7 @@ void Folder::step()
   gain = clampf(params[GAIN_PARAM].value + (inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value), 0.0,10.0);
   sym = clampf(params[SYM_PARAM].value + inputs[SYM_INPUT].value/5.0 * params[SYM_ATT_PARAM].value, -1.0, 1.0);
   in = (inputs[GATE_INPUT].value/5.0 + sym) * gain;
-  
+
   // out = in;
   // int stages = (int)(params[STAGE_PARAM].value)*2;
   // for (int i=0;i<stages;i++) {
@@ -123,12 +136,16 @@ void Folder::step()
     src_process(state, &data);
 
     //fold
-    int stages = (int)(params[STAGE_PARAM].value)*2;
     for(int i=0;i<data.output_frames_gen;i++) {
-      for (int y=0;y<stages;y++) {
-      	out_buffer[i] = fold3(out_buffer[i], threshold);
+      if(!alternativeMode) {
+	int stages = (int)(params[STAGE_PARAM].value)*2;
+	for (int y=0;y<stages;y++) {
+	  out_buffer[i] = fold3(out_buffer[i], threshold);
+	}
       }
-      //out_buffer[i] = fold(out_buffer[i], threshold);
+      else {
+	out_buffer[i] = fold(out_buffer[i], threshold);
+      }
       out_buffer[i] = tanh(out_buffer[i]);
     }
 
@@ -170,13 +187,35 @@ FolderWidget::FolderWidget()
   addParam(createParam<BefacoSwitch>(Vec(16, 50), module, Folder::STAGE_PARAM, 1, 3, 2));
   addParam(createParam<RoundSmallBlackKnob>(Vec(16, 100), module, Folder::GAIN_PARAM, 0.0, 10.0, 1.0));
   addParam(createParam<Trimpot>(Vec(21.5, 145), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
-  
   addParam(createParam<RoundSmallBlackKnob>(Vec(16, 185), module, Folder::SYM_PARAM, -1.0, 1.0, 0.0));
-  addParam(createParam<Trimpot>(Vec(21.5, 230), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));  
+  addParam(createParam<Trimpot>(Vec(21.5, 230), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));
 
 
   addInput(createInput<PJ301MPort>(Vec(3, 320), module, Folder::GATE_INPUT));;
   addInput(createInput<PJ301MPort>(Vec(3, 276), module, Folder::GAIN_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(30, 276), module, Folder::SYM_INPUT));;  
+  addInput(createInput<PJ301MPort>(Vec(30, 276), module, Folder::SYM_INPUT));;
   addOutput(createOutput<PJ301MPort>(Vec(30,320), module, Folder::GATE_OUTPUT));
+}
+
+struct FolderMenuItem : MenuItem {
+	Folder *module;
+	void onAction(EventAction &e) override {
+	  module->alternativeMode ^= true;
+	}
+	void step() override {
+	  rightText = (module->alternativeMode) ? "✔" : "";
+		MenuItem::step();
+	}
+};
+
+Menu *FolderWidget::createContextMenu() {
+	Menu *menu = ModuleWidget::createContextMenu();
+
+	Folder *folder = dynamic_cast<Folder*>(module);
+	assert(folder);
+
+	menu->addChild(construct<MenuEntry>());
+	menu->addChild(construct<FolderMenuItem>(&MenuEntry::text, "Alternative Folding Algorithm", &FolderMenuItem::module, folder));
+
+	return menu;
 }

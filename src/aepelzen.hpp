@@ -40,6 +40,7 @@ struct FolderWidget : ModuleWidget
 {
 	SVGPanel *panel;
 	FolderWidget();
+	Menu *createContextMenu() override;
 };
 
 struct QuantumWidget : ModuleWidget {

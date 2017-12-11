@@ -32,3 +32,13 @@ The mode button selects the mode for the CV output, that can be used to modulate
 * Random
 
 If you have ideas for additional CV-Modes or any other suggestions please let me know.
+
+## New Module: Manifold
+
+A wavefolder. Works best with simple input signals like sine or triangle waves. The fold and symmetry inputs work well with CV and audio signals. The output becomes pretty noisy for high frequency modulators but produces very interesting sounds at low/mid frequency ranges. There is an alternative folding algorithm that can be switched via context menu. That one does all the folding in a single pass and therefore the stages button does nothing if this mode is selected. It also responds different to the symmetry parameter, especially with a high number of folds.
+
+Note: this module shifts the phase of the input-signal (because of the upsampling)
+
+# Building
+
+The wavefolder uses libsamplerate for the upsampling. That shouldn't be a problem because Rack depends on libsamplerate anyway but you might have to install the header-files if you don't build Rack yourself.
