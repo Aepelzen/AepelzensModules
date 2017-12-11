@@ -51,7 +51,6 @@ struct Burst : Module
       CV_MODE_RANDOM,
     };
 
-  int panel = 0;
   float timeParam = 0;
   float clockedTimeParam = 0;
   float pulseParam = 4;
@@ -87,23 +86,7 @@ struct Burst : Module
 
   void onSampleRateChange() override {delta = 1.0/engineGetSampleRate();}
 
-  void randomize() override
-  {
-
-  }
-
-  json_t *toJson() override
-  {
-    json_t *rootJ = json_object();
-    json_object_set_new(rootJ, "panel", json_integer(panel));
-    return rootJ;
-  }
-  void fromJson(json_t *rootJ) override
-  {
-    json_t *panelJ = json_object_get(rootJ, "panel");
-    if (panelJ)
-      panel = json_integer_value(panelJ);
-  }
+  void randomize() override {}
 };
 
 void Burst::step()
