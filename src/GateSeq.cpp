@@ -174,7 +174,10 @@ void GateSeq::step() {
 	    channel_index[y] = (channel_index[y] + 1) % numSteps;
 	    stepLights[y*NUM_STEPS + channel_index[y]] = 1.0;
 	    gatePulse[y].trigger(1e-3);
-	    prob = randomf();
+	    //only compute new random number for active steps
+	    if (gateState[y*NUM_STEPS + channel_index[y]] && params[CHANNEL_PROB_PARAM+y].value < 1) {
+	      prob = randomf();
+	    }
 	  }
 
 	  pulse = gatePulse[y].process(1.0 / engineGetSampleRate());
