@@ -124,7 +124,7 @@ void Folder::step()
 
     //fold
     int stages = (int)(params[STAGE_PARAM].value)*2;
-    for(int i=0;i<UPSAMPLE_RATIO*BUF_LEN;i++) {   
+    for(int i=0;i<data.output_frames_gen;i++) {
       for (int y=0;y<stages;y++) {
       	out_buffer[i] = fold3(out_buffer[i], threshold);
       }
@@ -135,7 +135,7 @@ void Folder::step()
     //downsampling
     data_down.data_in = out_buffer;
     data_down.data_out = folded_buffer;
-    data_down.input_frames = BUF_LEN*UPSAMPLE_RATIO;
+    data_down.input_frames = data.output_frames_gen;
     data_down.output_frames = BUF_LEN;
     data_down.src_ratio = 1.0/UPSAMPLE_RATIO;
     data_down.end_of_input = 0;
@@ -144,10 +144,8 @@ void Folder::step()
   }
 
   in_buffer[frame] = in;
-
-  //out = out_buffer[UPSAMPLE_RATIO*frame] * 5.0;
-  out = folded_buffer[frame] * 5.0;
-  outputs[GATE_OUTPUT].value = out;
+  //out = folded_buffer[frame] * 5.0;
+  outputs[GATE_OUTPUT].value = folded_buffer[frame] * 5.0;
   return;
 }
 
@@ -169,16 +167,16 @@ FolderWidget::FolderWidget()
   // addChild(createScrew<ScrewSilver>(Vec(box.size.x - 30, 365)));
 
   //note: SmallKnob size = 28px, Trimpot = 17 px
-  addParam(createParam<BefacoSwitch>(Vec(16, 40), module, Folder::STAGE_PARAM, 1, 3, 2));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 80), module, Folder::GAIN_PARAM, 0.0, 10.0, 1.0));
-  addParam(createParam<Trimpot>(Vec(21.5, 120), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
+  addParam(createParam<BefacoSwitch>(Vec(16, 50), module, Folder::STAGE_PARAM, 1, 3, 2));
+  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 100), module, Folder::GAIN_PARAM, 0.0, 10.0, 1.0));
+  addParam(createParam<Trimpot>(Vec(21.5, 145), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
   
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 200), module, Folder::SYM_PARAM, -1.0, 1.0, 0.0));
-  addParam(createParam<Trimpot>(Vec(21.5, 240), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));  
+  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 185), module, Folder::SYM_PARAM, -1.0, 1.0, 0.0));
+  addParam(createParam<Trimpot>(Vec(21.5, 230), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));  
 
 
-  addInput(createInput<PJ301MPort>(Vec(3, 335), module, Folder::GATE_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(3, 290), module, Folder::GAIN_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(30, 290), module, Folder::SYM_INPUT));;  
-  addOutput(createOutput<PJ301MPort>(Vec(30,335), module, Folder::GATE_OUTPUT));
+  addInput(createInput<PJ301MPort>(Vec(3, 320), module, Folder::GATE_INPUT));;
+  addInput(createInput<PJ301MPort>(Vec(3, 276), module, Folder::GAIN_INPUT));;
+  addInput(createInput<PJ301MPort>(Vec(30, 276), module, Folder::SYM_INPUT));;  
+  addOutput(createOutput<PJ301MPort>(Vec(30,320), module, Folder::GATE_OUTPUT));
 }
