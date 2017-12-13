@@ -60,6 +60,7 @@ struct Burst : Module
   int pulses = 4;
   float delta = 0;
   float randomcv = 0;
+  float cvOut = 0;
 
   SchmittTrigger m_buttonTrigger;
   SchmittTrigger gateTrigger;;
@@ -98,7 +99,6 @@ void Burst::step()
   float accel = params[ACCEL_PARAM].value;
   float jitter = params[JITTER_PARAM].value;
   float randomDelta = 0;
-  float cvOut = 0;  
 
   timeParam = clampf(params[TIME_PARAM].value + (params[TIME_ATT_PARAM].value * inputs[TIME_INPUT].value / 5.0 * MAX_TIME),0.0, MAX_TIME);
   pulseParam = clampf(params[REP_PARAM].value + (inputs[REP_INPUT].value * params[REP_ATT_PARAM].value /5.0 * MAX_REPS), 0.0, MAX_REPS);
@@ -146,6 +146,39 @@ void Burst::step()
     gateOutLength = (params[GATE_MODE_PARAM].value) ? 0.01 : seconds/2;
     outPulse.trigger(gateOutLength);
     randomcv = randomf();
+
+    //cv
+    float cvDelta = 5.0/pulses;
+    int mode = roundf(params[CV_MODE_PARAM].value);
+    switch (mode) {
+    case CV_UP:
+      cvOut = pulseCount * cvDelta;
+      break;
+    case CV_DOWN:
+      cvOut = pulseCount * cvDelta * (-1);
+      break;
+    case CV_MODE3:
+      cvOut = trunc((pulseCount + 1)/2) * cvDelta;
+      if(pulseCount % 2 == 1) {
+	cvOut *= -1;
+      }
+      break;
+    case CV_MODE4:
+      cvOut = pulseCount * cvDelta;
+      if(pulseCount %2 == 1) {
+	cvOut *= -1;
+      }
+      break;
+    case CV_MODE_RANDOMP:
+      cvOut = randomcv *5.0;
+      break;
+    case CV_MODE_RANDOMN:
+      cvOut = randomcv * (-5.0);
+      break;
+    case CV_MODE_RANDOM:
+      cvOut = randomcv *10 - 5;
+      break;
+    }
   }
 
   if (schmittValue || m_buttonTrigger.process(params[BUTTON_PARAM].value)) {
@@ -157,39 +190,6 @@ void Burst::step()
     pulses = pulseParam;
     //outputs[CV_OUTPUT].value = 0;
     cvOut = 0;
-  }
-
-  //cv
-  float cvDelta = 5.0/pulses;
-  int mode = roundf(params[CV_MODE_PARAM].value);
-  switch (mode) {
-  case CV_UP:
-    cvOut = pulseCount * cvDelta;
-    break;
-  case CV_DOWN:
-    cvOut = pulseCount * cvDelta * (-1);
-    break;
-  case CV_MODE3:
-    cvOut = trunc((pulseCount + 1)/2) * cvDelta;
-    if(pulseCount % 2 == 1) {
-      cvOut *= -1;
-    }
-    break;
-  case CV_MODE4:
-    cvOut = pulseCount * cvDelta;
-    if(pulseCount %2 == 1) {
-      cvOut *= -1;
-    }
-    break;
-  case CV_MODE_RANDOMP:
-    cvOut = randomcv *5.0;
-    break;
-  case CV_MODE_RANDOMN:
-    cvOut = randomcv * (-5.0);
-    break;
-  case CV_MODE_RANDOM:
-    cvOut = randomcv *10 - 5;
-    break;
   }
 
   timer += delta;
