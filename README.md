@@ -33,11 +33,18 @@ The mode button selects the mode for the CV output, that can be used to modulate
 
 If you have ideas for additional CV-Modes or any other suggestions please let me know.
 
-## New Module: Manifold
+## Manifold
 
 A wavefolder. Works best with simple input signals like sine or triangle waves. The fold and symmetry inputs work well with CV and audio signals. The output becomes pretty noisy for high frequency modulators but produces very interesting sounds at low/mid frequency ranges. There is an alternative folding algorithm that can be switched via context menu. That one does all the folding in a single pass and therefore the stages button does nothing if this mode is selected. It also responds different to the symmetry parameter, especially with a high number of folds.
 
 Note: this module shifts the phase of the input-signal (because of the upsampling)
+
+## New Module: Walker
+
+A CV generator that simulates a random walk. At every step the CV output changes by either plus or minus stepsize. The decision is affected by the Symmetry parameter. At 12 o'clock both directions are equally likely, fully ccw all steps move downward, full cw all steps move upward. The Switch controls the behaviour at the range boundaries. There are 3 possible modes:
+* Clip the signal at the boundary and just wait for it to eventually get back into the allowed range (depending on the symmetry parameter this might not happen or take a long time)
+* Reset to zero
+* Reset to random value within ± range/2 (this is also affected by the Symmetry parameter)
 
 # Building
 

@@ -15,7 +15,7 @@ struct Walker : Module
     };
   enum InputIds
     {
-      GATE_INPUT,
+      CLOCK_INPUT,
       STEP_INPUT,
       RANGE_INPUT,
       NUM_INPUTS
@@ -38,36 +38,33 @@ struct Walker : Module
 
   void reset() override {}
 
-  SchmittTrigger gateTrigger;;
   SchmittTrigger clockTrigger;
   float stepsize, range, sym, cvout;
+  int mode = 1;
 };
 
 void Walker::step()
 {
   stepsize = clampf(params[STEP_PARAM].value + inputs[STEP_INPUT].value/5.0 * params[STEP_ATT_PARAM].value, 0.0, 1.0);
   range = clampf(params[RANGE_PARAM].value + inputs[RANGE_INPUT].value * params[RANGE_ATT_PARAM].value, 0.0, 5.0);
-  int mode = (int)params[RANGE_MODE_PARAM].value;
-  float rand = randomf();
+  mode = (int)params[RANGE_MODE_PARAM].value;
   
-  if( gateTrigger.process(inputs[GATE_INPUT].value) ) {
+  if( clockTrigger.process(inputs[CLOCK_INPUT].value) ) {
+    float rand = randomf();
     cvout += (rand > 0.5 - params[SYM_PARAM].value / 2.0) ? + stepsize : -stepsize;
     if(cvout > range || cvout < -range) {
       switch (mode) {
-      case 1: {
+      case 1:
 	cvout = clampf(cvout, -range, range);
 	break;
-      }
-      case 2: {
+      case 2:
 	cvout = 0;
 	break;
-      }
-      case 3: {
+      case 3:
 	cvout = randomf() * range/2;
 	if (randomf() < 0.5 - params[SYM_PARAM].value / 2.0)
 	  cvout = -cvout;
 	break;
-      }
       }
     }
   }
@@ -79,7 +76,6 @@ WalkerWidget::WalkerWidget()
 {
   auto *module = new Walker();
   setModule(module);
-  //box.size = Vec(6 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT);
   box.size = Vec(4 * 15, RACK_GRID_HEIGHT);
 
   panel = new SVGPanel();
@@ -94,7 +90,7 @@ WalkerWidget::WalkerWidget()
   addParam(createParam<BefacoSwitch>(Vec(16, 172.5), module, Walker::RANGE_MODE_PARAM, 1, 3, 1));
   addParam(createParam<RoundSmallBlackKnob>(Vec(16, 210), module, Walker::SYM_PARAM, -1.0, 1.0, 0));
 
-  addInput(createInput<PJ301MPort>(Vec(3, 320), module, Walker::GATE_INPUT));;
+  addInput(createInput<PJ301MPort>(Vec(3, 320), module, Walker::CLOCK_INPUT));;
   addInput(createInput<PJ301MPort>(Vec(3, 276), module, Walker::STEP_INPUT));;
   addInput(createInput<PJ301MPort>(Vec(30, 276), module, Walker::RANGE_INPUT));;
   addOutput(createOutput<PJ301MPort>(Vec(30,320), module, Walker::CV_OUTPUT));
