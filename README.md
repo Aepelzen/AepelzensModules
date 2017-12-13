@@ -46,6 +46,10 @@ A CV generator that simulates a random walk. At every step the CV output changes
 * Reset to zero
 * Reset to random value within ± range/2 (this is also affected by the Symmetry parameter)
 
+## New Module: Erwin
+
+A 4-channel scale-quantiser with user-definable scales. All inputs/outputs use the same scale, however you can transpose every channel seperately by ±4 octaves (the 4 small trimpots). You can also transpose all outputs by 4 octaves and/or 12 semitonses via CV inputs.
+
 # Building
 
 The wavefolder uses libsamplerate for the upsampling. That shouldn't be a problem because Rack depends on libsamplerate anyway but you might have to install the header-files if you don't build Rack yourself.
