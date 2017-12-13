@@ -126,7 +126,6 @@ void GateSeq::step() {
 	  if (inputs[EXT_CLOCK_INPUT].active) {
 	    // External clock
 	    if (clockTrigger.process(inputs[EXT_CLOCK_INPUT].value)) {
-	      //phase = 0.0;
 	      nextStep = true;
 	    }
 	  }
@@ -139,70 +138,69 @@ void GateSeq::step() {
 	      nextStep = true;
 	    }
 	  }
+
+	  bool pulse = false;
+	  bool channelStep = false;
+
+	  for (int y = 0; y < NUM_CHANNELS; y++) {
+	    float channelProb = clampf(inputs[CHANNEL_PROB_INPUT + y].value /5.0 + params[CHANNEL_PROB_PARAM + y].value, 0.0, 1.0);
+	    //channel clock overwrite
+	    channelStep = false;
+	    if(inputs[CHANNEL_CLOCK_INPUT + y].active) {
+	      if (channelClockTrigger[y].process(inputs[CHANNEL_CLOCK_INPUT + y].value)) {
+		channelStep = true;
+	      }
+	    }
+	    else {
+	      channelStep = nextStep;
+	    }
+	    // Advance step
+	    if (channelStep) {
+	      int numSteps = clampi(roundf(params[CHANNEL_STEPS_PARAM+y].value), 1, NUM_STEPS);
+	      channel_index[y] = (channel_index[y] + 1) % numSteps;
+	      stepLights[y*NUM_STEPS + channel_index[y]] = 1.0;
+	      gatePulse[y].trigger(1e-3);
+	      //only compute new random number for active steps
+	      if (gateState[y*NUM_STEPS + channel_index[y]] && channelProb < 1) {
+		prob = randomf();
+	      }
+	    }
+
+	    pulse = gatePulse[y].process(1.0 / engineGetSampleRate());
+	    bool gateOn = gateState[y*NUM_STEPS + channel_index[y]];
+	    //probability
+	    if(prob > channelProb) {
+	      gateOn = false;
+	    }
+	    gateOn = gateOn && !pulse;
+	    outputs[GATE1_OUTPUT + y].value = (gateOn) ? 10.0 : 0.0;
+	  }
+	}
+	else {
+	  //clear outputs, otherwise it holds it's last value
+	  for(int y=0;y<NUM_CHANNELS;y++) {
+	    outputs[GATE1_OUTPUT + y].value = 0;
+	  }
 	}
 
 	// Reset
 	if (resetTrigger.process(params[RESET_PARAM].value + inputs[RESET_INPUT].value)) {
-		phase = 0.0;
-		//index = 999;
-		for (int y = 0; y < NUM_CHANNELS; y++) {
-		  //channel_index[y] = 999;
-		  channel_index[y] = -1;
-		}
-		nextStep = true;
-		lights[RESET_LIGHT].value = 1.0;
+	  phase = 0.0;
+	  for (int y = 0; y < NUM_CHANNELS; y++) {
+	    channel_index[y] = 0;
+	  }
+	  nextStep = true;
+	  lights[RESET_LIGHT].value = 1.0;
 	}
-
-	bool pulse = false;
-	bool channelStep = false;
-
-	for (int y = 0; y < NUM_CHANNELS; y++) {
-	  float channelProb = clampf(inputs[CHANNEL_PROB_INPUT + y].value /5.0 + params[CHANNEL_PROB_PARAM + y].value, 0.0, 1.0);
-	  //channel clock overwrite
-	  channelStep = false;
-	  if(inputs[CHANNEL_CLOCK_INPUT + y].active) {
-	    if (channelClockTrigger[y].process(inputs[CHANNEL_CLOCK_INPUT + y].value)) {
-	      channelStep = true;
-	    }
-	  }
-	  else {
-	    channelStep = nextStep;
-	  }
-	  // Advance step
-	  if (channelStep) {
-	    //int numSteps = clampi(roundf(params[CHANNEL_STEPS_PARAM+y].value + inputs[STEPS_INPUT].value), 1, NUM_STEPS);
-	    int numSteps = clampi(roundf(params[CHANNEL_STEPS_PARAM+y].value), 1, NUM_STEPS);
-	    //printf("Channel: %i, numSteps: %i", y, numSteps);
-	    channel_index[y] = (channel_index[y] + 1) % numSteps;
-	    stepLights[y*NUM_STEPS + channel_index[y]] = 1.0;
-	    gatePulse[y].trigger(1e-3);
-	    //only compute new random number for active steps
-	    if (gateState[y*NUM_STEPS + channel_index[y]] && channelProb < 1) {
-	      prob = randomf();
-	    }
-	  }
-
-	  pulse = gatePulse[y].process(1.0 / engineGetSampleRate());
-
-	  bool gateOn = gateState[y*NUM_STEPS + channel_index[y]];
-	  //probability
-	  if(prob > channelProb) {
-	    gateOn = false;
-	  }
-	  gateOn = gateOn && !pulse;
-	  float gate = (gateOn) ? 10.0 : 0.0;
-	  outputs[GATE1_OUTPUT + y].value = gate;
-	}
-
 	lights[RESET_LIGHT].value -= lights[RESET_LIGHT].value / lightLambda / gSampleRate;
 
 	// Gate buttons
 	for (int i = 0; i < NUM_GATES; i++) {
-		if (gateTriggers[i].process(params[GATE1_PARAM + i].value)) {
-			gateState[i] = !gateState[i];
-		}
-		stepLights[i] -= stepLights[i] / lightLambda / gSampleRate;
-		lights[GATE_LIGHTS + i].value = (gateState[i] >= 1.0) ? 0.7 - stepLights[i] : stepLights[i];
+	  if (gateTriggers[i].process(params[GATE1_PARAM + i].value)) {
+	    gateState[i] = !gateState[i];
+	  }
+	  stepLights[i] -= stepLights[i] / lightLambda / gSampleRate;
+	  lights[GATE_LIGHTS + i].value = (gateState[i] >= 1.0) ? 0.7 - stepLights[i] : stepLights[i];
 	}
 }
 
