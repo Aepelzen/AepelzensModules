@@ -14,6 +14,7 @@ void init(rack::Plugin *p) {
 	p->addModel(createModel<GateSeqWidget>("Aepelzens Modules", "GateSEQ", "Gate Sequencer", SEQUENCER_TAG));
 	p->addModel(createModel<BurstWidget>("Aepelzens Modules", "burst", "Burst Generator", SEQUENCER_TAG));
 	p->addModel(createModel<FolderWidget>("Aepelzens Modules", "folder", "Manifold", WAVESHAPER_TAG));
+	p->addModel(createModel<WalkerWidget>("Aepelzens Modules", "Walker", "Random Walk", UTILITY_TAG));
 	//p->addModel(createModel<QuantumWidget>("Aepelzens Modules", "Quantum", "Quantum4", UTILITY_TAG));
 	//p->addModel(createModel<dTimeWidget>("Aepelzens Modules", "dTime", "dTime Sequencer", SEQUENCER_TAG));
 }

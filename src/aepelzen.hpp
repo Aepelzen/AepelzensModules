@@ -43,6 +43,12 @@ struct FolderWidget : ModuleWidget
 	Menu *createContextMenu() override;
 };
 
+struct WalkerWidget : ModuleWidget
+{
+	SVGPanel *panel;
+	WalkerWidget();
+};
+
 struct QuantumWidget : ModuleWidget {
 	QuantumWidget();
 	json_t *toJsonData() ;
