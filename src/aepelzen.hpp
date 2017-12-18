@@ -10,8 +10,9 @@ extern Plugin *plugin;
 
 struct GateSeqWidget : ModuleWidget {
 	GateSeqWidget();
-	json_t *toJsonData();
-	void fromJsonData(json_t *root);
+	ParamWidget *lengthParams[8];
+	ParamWidget *probParams[8];
+	void updateValues();
 };
 
 struct QuadSeqWidget : ModuleWidget {
