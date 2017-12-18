@@ -8,15 +8,14 @@ const int NUM_GATES = NUM_STEPS * NUM_CHANNELS;
 struct GateSeq : Module {
 
     enum ParamIds {
-	TEST_PARAM,
+	LENGTH_PARAM,
 	CLOCK_PARAM,
 	RUN_PARAM,
 	RESET_PARAM,
 	INIT_PARAM,
 	COPY_PARAM,
 	MERGE_PARAM,
-	CHANNEL_STEPS_PARAM,
-	CHANNEL_PROB_PARAM = CHANNEL_STEPS_PARAM + NUM_CHANNELS,
+	CHANNEL_PROB_PARAM,
 	BANK_PARAM = CHANNEL_PROB_PARAM + NUM_CHANNELS,
 	PATTERN_PARAM = BANK_PARAM + 8,
 	GATE1_PARAM = PATTERN_PARAM + 8,
@@ -38,28 +37,35 @@ struct GateSeq : Module {
 	RUNNING_LIGHT,
 	RESET_LIGHT,
 	COPY_LIGHT,
+	LENGTH_LIGHT,
 	MERGE_LIGHT,
 	BANK_LIGHTS,
 	PATTERN_LIGHTS = BANK_LIGHTS + 8,
 	GATE_LIGHTS = PATTERN_LIGHTS + 8,
-	NUM_LIGHTS = GATE_LIGHTS + NUM_GATES
+	NUM_LIGHTS = GATE_LIGHTS + NUM_GATES + NUM_GATES
     };
 
     GateSeq() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
     void step() override;
     json_t *toJson() override;
     void fromJson(json_t *rootJ) override;
-
-    //Stuff for copying patterns
-    float lengthValues[8] = {};
-    float probValues[8] = {};
-
-    int bank = 0;
-    int pattern = 0;
-
     void initializePattern(int bank, int pattern);
     void copyPattern(int basePattern, int bank, int pattern);
     void processPatternSelection();
+
+    struct patternInfo {
+	bool gates[NUM_GATES] = {false};
+	int length[NUM_CHANNELS] = { 16, 16, 16, 16, 16, 16, 16, 16};
+	//float prob[NUM_CHANNELS] = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    };
+
+    patternInfo patterns [64] = {};
+    patternInfo* currentPattern;
+
+    int bank = 0;
+    int pattern = 0;
+    //source pattern for copying and merging (this uses the actual pattern index 0..64)
+    int basePattern = 0;
 
     SchmittTrigger clockTrigger; // for external clock
     SchmittTrigger channelClockTrigger[NUM_CHANNELS]; // for external clock
@@ -67,30 +73,28 @@ struct GateSeq : Module {
     SchmittTrigger resetTrigger;
     SchmittTrigger initTrigger;
     SchmittTrigger copyTrigger;
+    SchmittTrigger lengthTrigger;
     SchmittTrigger gateTriggers[NUM_GATES];
-    PulseGenerator gatePulse[NUM_CHANNELS];
-    float stepLights[NUM_GATES] = {};
+    SchmittTrigger bankTriggers[8];
+    SchmittTrigger patternTriggers[8];
 
+    PulseGenerator gatePulse[NUM_CHANNELS];
+
+    float stepLights[NUM_GATES] = {};
+    int channel_index[NUM_CHANNELS] = {};
     bool running = true;
     bool copyMode = false;
+    bool lengthMode = false;
     float phase = 0.0;
-    int channel_index[NUM_CHANNELS] = {};
     float prob = 0;
 
-    SchmittTrigger bankTriggers[8];    
-    //source pattern for copying and merging (this uses the actual pattern index 0..64)
-    int basePattern = 0;
-    SchmittTrigger patternTriggers[8];
-    bool patterns [64][NUM_GATES] = {};
-    //this used to be the array of gate values. Now it points to the first gate value of the
-    //curent pattern in patterns so i can just keep using it as before (TODO: maybe get rid of this)
-    bool* gateState = &patterns[0][0];
-    //bool gateState[NUM_GATES] = {};
-    
     void reset() override {
 	for(int y=0;y<64;y++) {
 	    for (int i = 0; i < NUM_GATES; i++) {
-		patterns[y][i] = false;
+		patterns[y].gates[i] = false;
+	    }
+	    for (int i=0; i<NUM_CHANNELS; i++) {
+		patterns[y].length[i] = 16;
 	    }
 	}
 	bank = 0;
@@ -98,8 +102,11 @@ struct GateSeq : Module {
     }
 
     void randomize() override {
-	for (int i = 0; i < NUM_GATES; i++) {
-	    gateState[i] = (randomf() > 0.5);
+	for (int i=0; i<NUM_CHANNELS; i++) {
+	    for (int y=0; y<NUM_STEPS; y++) {
+		currentPattern->gates[i*NUM_CHANNELS + y] = (randomf() > 0.5);
+	    }
+	    currentPattern->length[i] = (int)(randomf()*15) + 1;
 	}
     }
 };
@@ -107,7 +114,8 @@ struct GateSeq : Module {
 
 void GateSeq::step() {
     float gSampleRate = engineGetSampleRate();
-    const float lightLambda = 0.075;
+    //const float lightLambda = 0.075;
+    const float lightLambda = 0.1;
 
     // Run
     if (runningTrigger.process(params[RUN_PARAM].value))
@@ -116,6 +124,11 @@ void GateSeq::step() {
 
     processPatternSelection();
     bool nextStep = false;
+
+    if(lengthTrigger.process(params[LENGTH_PARAM].value)) {
+	lengthMode = !lengthMode;
+    }
+    lights[LENGTH_LIGHT].value = (lengthMode) ? 1.0 : 0.0;
 
     if (running) {
 	if (inputs[EXT_CLOCK_INPUT].active) {
@@ -151,18 +164,19 @@ void GateSeq::step() {
 	    }
 	    // Advance step
 	    if (channelStep) {
-		int numSteps = clampi(roundf(params[CHANNEL_STEPS_PARAM+y].value), 1, NUM_STEPS);
+		//int numSteps = clampi(roundf(params[CHANNEL_STEPS_PARAM+y].value), 1, NUM_STEPS);
+		int numSteps = currentPattern->length[y];
 		channel_index[y] = (channel_index[y] + 1) % numSteps;
 		stepLights[y*NUM_STEPS + channel_index[y]] = 1.0;
 		gatePulse[y].trigger(1e-3);
 		//only compute new random number for active steps
-		if (gateState[y*NUM_STEPS + channel_index[y]] && channelProb < 1) {
+		if (currentPattern->gates[y*NUM_STEPS + channel_index[y]] && channelProb < 1) {
 		    prob = randomf();
 		}
 	    }
 
 	    pulse = gatePulse[y].process(1.0 / engineGetSampleRate());
-	    bool gateOn = gateState[y*NUM_STEPS + channel_index[y]];
+	    bool gateOn = currentPattern->gates[y*NUM_STEPS + channel_index[y]];
 	    //probability
 	    if(prob > channelProb) {
 		gateOn = false;
@@ -192,33 +206,25 @@ void GateSeq::step() {
     // Gate buttons
     for (int i = 0; i < NUM_GATES; i++) {
 	if (gateTriggers[i].process(params[GATE1_PARAM + i].value)) {
-	    gateState[i] = !gateState[i];
+	    if(lengthMode) {
+		currentPattern->length[i/NUM_STEPS] = (i % NUM_STEPS ) + 1;
+	    }
+	    else
+		currentPattern->gates[i] = !currentPattern->gates[i];
 	}
 	stepLights[i] -= stepLights[i] / lightLambda / gSampleRate;
-	lights[GATE_LIGHTS + i].value = (gateState[i] >= 1.0) ? 0.7 - stepLights[i] : stepLights[i];
+	lights[GATE_LIGHTS + 2*i].value = (currentPattern->gates[i] >= 1.0) ? 0.7 - stepLights[i] : stepLights[i];
+	lights[GATE_LIGHTS + 2*i + 1].value = ( lengthMode && (i % NUM_STEPS + 1) == currentPattern->length[i/NUM_STEPS]) ? 1.0 : 0.0;
     }
 }
 
 template <typename BASE>
 struct MuteLight : BASE {
     MuteLight() {
-	//this->box.size = Vec(20.0, 20.0);
 	this->box.size = mm2px(Vec(6.0, 6.0));
     }
 };
 
-struct InitButton : LEDBezel {
-    void onMouseDown(EventMouseDown &e) override {
-	GateSeqWidget *parent = dynamic_cast<GateSeqWidget*>(this->parent);
-	GateSeq *module = dynamic_cast<GateSeq*>(this->module);
-	if (module && parent) {
-	    module->initializePattern(module->bank, module->pattern);
-	    parent->updateValues();   
-	}
-	LEDBezel::onMouseDown(e);
-    }
-};
-    
 GateSeqWidget::GateSeqWidget() {
     GateSeq *module = new GateSeq();
     setModule(module);
@@ -247,9 +253,12 @@ GateSeqWidget::GateSeqWidget() {
     addInput(createInput<PJ301MPort>(Vec(portX[1]-1, 99-1), module, GateSeq::EXT_CLOCK_INPUT));
     addInput(createInput<PJ301MPort>(Vec(portX[2]-1, 99-1), module, GateSeq::RESET_INPUT));
 
-    addParam(createParam<InitButton>(Vec(200, 30), module, GateSeq::INIT_PARAM , 0.0, 1.0, 0.0));
+    addParam(createParam<LEDBezel>(Vec(200, 30), module, GateSeq::INIT_PARAM , 0.0, 1.0, 0.0));
     addParam(createParam<LEDBezel>(Vec(200, 70), module, GateSeq::COPY_PARAM , 0.0, 1.0, 0.0));
-    addChild(createLight<MuteLight<RedLight>>(Vec(202, 72), module, GateSeq::COPY_LIGHT));
+    addChild(createLight<MuteLight<GreenLight>>(Vec(202, 72), module, GateSeq::COPY_LIGHT));
+
+    addParam(createParam<LEDBezel>(Vec(200, 100), module, GateSeq::LENGTH_PARAM , 0.0, 1.0, 0.0));
+    addChild(createLight<MuteLight<GreenRedLight>>(Vec(202, 102), module, GateSeq::LENGTH_LIGHT));
 
     addParam(createParam<LEDBezel>(Vec(465, 30), module, GateSeq::MERGE_PARAM , 0.0, 1.0, 0.0));
     addChild(createLight<MuteLight<RedLight>>(Vec(467, 32), module, GateSeq::MERGE_LIGHT));
@@ -266,23 +275,18 @@ GateSeqWidget::GateSeqWidget() {
 	for (int x = 0; x < NUM_STEPS; x++) {
 	    int i = y*NUM_STEPS+x;
 	    addParam(createParam<LEDBezel>(Vec(60 + x*24, 155+y*25), module, GateSeq::GATE1_PARAM + i, 0.0, 1.0, 0.0));
-	    addChild(createLight<MuteLight<GreenLight>>(Vec(60 + x*24 + 2, 155+y*25+2), module, GateSeq::GATE_LIGHTS + i));
+	    addChild(createLight<MuteLight<GreenRedLight>>(Vec(60 + x*24 + 2, 155+y*25+2), module, GateSeq::GATE_LIGHTS + 2*i));
 	}
 	addInput(createInput<PJ301MPort>(Vec(5, 155+y*25 - 1.5), module, GateSeq::CHANNEL_CLOCK_INPUT + y));
 	addInput(createInput<PJ301MPort>(Vec(30, 155+y*25 - 1.5), module, GateSeq::CHANNEL_PROB_INPUT + y));
 	addOutput(createOutput<PJ301MPort>(Vec(445, 155+y*25 - 1.5), module, GateSeq::GATE1_OUTPUT + y));
-	//length and prob
-	lengthParams[y] = createParam<Trimpot>(Vec(475, 155+y*25 + 1.5), module, GateSeq::CHANNEL_STEPS_PARAM + y, 1.0, NUM_STEPS, NUM_STEPS);
-	probParams[y] = createParam<Trimpot>(Vec(495, 155+y*25 + 1.5), module, GateSeq::CHANNEL_PROB_PARAM + y, 0.0, 1.0, 1.0);
-	addParam(lengthParams[y]);
-	addParam(probParams[y]);
+	addParam(createParam<Trimpot>(Vec(495, 155+y*25 + 1.5), module, GateSeq::CHANNEL_PROB_PARAM + y, 0.0, 1.0, 1.0));
     }
-    //updateValues();
 }
 
 void GateSeq::processPatternSelection() {
     if(initTrigger.process(params[INIT_PARAM].value))
-    	initializePattern(bank, pattern);
+	initializePattern(bank, pattern);
 
     //copy pattern
     if(copyTrigger.process(params[COPY_PARAM].value))
@@ -295,6 +299,9 @@ void GateSeq::processPatternSelection() {
 	    bank = i;
 	    //Switch to first pattern in bank (TODO: do i really want this?)
 	    pattern = 0;
+	    if (!copyMode)
+		basePattern = 8*bank + pattern;
+	    printf("base pattern: %d\n", basePattern);
 	    break;
 	}
 	lights[BANK_LIGHTS + i].value = (bank == i) ? 1.0 : 0.0;
@@ -303,38 +310,35 @@ void GateSeq::processPatternSelection() {
     for(int i=0;i<8;i++) {
 	if(patternTriggers[i].process(params[PATTERN_PARAM + i].value)) {
 	    if(copyMode) {
-		basePattern = pattern;
+		//basePattern = pattern;
 		copyPattern(basePattern, bank, i);
 		copyMode = false;
 	    }
 	    pattern = i;
+	    basePattern = 8 * bank + pattern;
+	    printf("base pattern: %d\n", basePattern);
+	    //reset index (TODO: make this optional)
+	    for(int y=0;y<NUM_CHANNELS;y++) {
+		channel_index[y] = 0;
+	    }
 	    break;
 	}
 	lights[PATTERN_LIGHTS + i].value = (pattern == i) ? 1.0 : 0.0;
     }
-    gateState = &patterns[pattern + bank*8][0];
+    currentPattern = &patterns[8*bank + pattern];
 }
 
 void GateSeq::initializePattern(int bank, int pattern) {
-    gateState = &patterns[8*bank + pattern][0];
     for(int i=0;i<NUM_GATES;i++) {
-    	gateState[i] = 0;
+	currentPattern->gates[i] = 0;
     }
 
-    //TODO: find a way to set parameters update knob positions
     for (int i = 0; i<NUM_CHANNELS; i++) {
-    	lengthValues[i] = 16;
-	probValues[i] = 1;
+	currentPattern->length[i] = 16;
+	//currentPatternp->rob[i] = 1;
     }
 }
 
-void GateSeqWidget::updateValues() {
-    GateSeq *module = dynamic_cast<GateSeq*>(this->module);
-    for(int i=0;i<NUM_CHANNELS;i++) {
-	lengthParams[i]->setValue(module->lengthValues[i]);
-	probParams[i]->setValue(module->probValues[i]);
-    }    
-}
 /**
    Copy a pattern
 
@@ -343,9 +347,13 @@ void GateSeqWidget::updateValues() {
    @param pattern The pattern of the destination pattern
 */
 void GateSeq::copyPattern(int basePattern, int bank, int pattern) {
-    gateState = &patterns[8*bank + pattern][0];
+    //currentPattern = &patterns[8*bank + pattern];
+    printf("Copying pattern: %d to bank: %d, pattern:%d\n", basePattern, bank, pattern);
     for (int i=0; i<NUM_GATES; i++) {
-	gateState[i] = patterns[basePattern][i];
+	patterns[8*bank + pattern].gates[i] = patterns[basePattern].gates[i];
+    }
+    for(int i=0;i<NUM_CHANNELS;i++) {
+	patterns[8*bank + pattern].length[i] = patterns[basePattern].length[i];
     }
 }
 
@@ -354,17 +362,27 @@ json_t* GateSeq::toJson() {
 
     //patterns
     json_t *patternsJ = json_array();
+    json_t *lengthsJ = json_array();
+
     for(int y=0;y<64;y++) {
 	// Gate values
 	json_t *gatesJ = json_array();
 	for (int i = 0; i < NUM_GATES; i++) {
-	    //json_t *gateJ = json_integer((int) gateState[i]);
-	    json_t *gateJ = json_integer((int) patterns[y][i]);
+	    json_t *gateJ = json_integer((int) patterns[y].gates[i]);
 	    json_array_append_new(gatesJ, gateJ);
 	}
 	json_array_append_new(patternsJ, gatesJ);
+
+	//second array for lengths to keep things simple
+	json_t *pLengthJ = json_array();
+	for(int i=0;i<NUM_CHANNELS;i++) {
+	    json_t* lengthJ = json_integer(patterns[y].length[i]);
+	    json_array_append_new(pLengthJ, lengthJ);
+	}
+	json_array_append_new(lengthsJ, pLengthJ);
     }
     json_object_set_new(rootJ, "patterns", patternsJ);
+    json_object_set_new(rootJ, "lengths", lengthsJ);
 
     json_t *activePatternJ = json_integer(pattern);
     json_object_set_new(rootJ, "pattern", activePatternJ);
@@ -375,13 +393,20 @@ json_t* GateSeq::toJson() {
 
 void GateSeq::fromJson(json_t *rootJ) {
     json_t *patternsJ = json_object_get(rootJ, "patterns");
+    json_t *lengthsJ = json_object_get(rootJ, "lengths");
 
     for(int y=0;y<64;y++) {
 	// Gate values
 	json_t *gatesJ = json_array_get(patternsJ, y);
 	for (int i = 0; i < NUM_GATES; i++) {
 	    json_t *gateJ = json_array_get(gatesJ, i);
-	    patterns[y][i] = json_integer_value(gateJ);
+	    //patterns[y][i] = json_integer_value(gateJ);
+	    patterns[y].gates[i] = json_integer_value(gateJ);
+	}
+	json_t *pLengthsJ = json_array_get(lengthsJ, y);
+	for(int i=0;i<NUM_CHANNELS;i++) {
+	    json_t *lengthJ = json_array_get(pLengthsJ, i);
+	    patterns[y].length[i] = json_integer_value(lengthJ);
 	}
     }
     json_t * patternJ = json_object_get(rootJ, "pattern");
@@ -389,6 +414,5 @@ void GateSeq::fromJson(json_t *rootJ) {
     json_t * bankJ = json_object_get(rootJ, "bank");
     bank = json_integer_value(bankJ);
 
-    //update gateStates
-    gateState = &patterns[pattern + bank*8][0];
+    currentPattern = &patterns[8*bank + pattern];
 }
