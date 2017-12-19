@@ -289,8 +289,13 @@ void GateSeq::processPatternSelection() {
 	initializePattern(bank, pattern);
 
     //copy pattern
-    if(copyTrigger.process(params[COPY_PARAM].value))
+    if(copyTrigger.process(params[COPY_PARAM].value)) {
+	if(copyMode)
+	    copyPattern(basePattern, bank, pattern);
+	else
+	    basePattern = 8*bank + pattern;
 	copyMode = (!copyMode);
+    }
     lights[COPY_LIGHT].value = (copyMode) ? 1.0 : 0.0;
 
     //bank
@@ -299,9 +304,6 @@ void GateSeq::processPatternSelection() {
 	    bank = i;
 	    //Switch to first pattern in bank (TODO: do i really want this?)
 	    pattern = 0;
-	    if (!copyMode)
-		basePattern = 8*bank + pattern;
-	    printf("base pattern: %d\n", basePattern);
 	    break;
 	}
 	lights[BANK_LIGHTS + i].value = (bank == i) ? 1.0 : 0.0;
@@ -309,14 +311,7 @@ void GateSeq::processPatternSelection() {
     //pattern
     for(int i=0;i<8;i++) {
 	if(patternTriggers[i].process(params[PATTERN_PARAM + i].value)) {
-	    if(copyMode) {
-		//basePattern = pattern;
-		copyPattern(basePattern, bank, i);
-		copyMode = false;
-	    }
 	    pattern = i;
-	    basePattern = 8 * bank + pattern;
-	    printf("base pattern: %d\n", basePattern);
 	    //reset index (TODO: make this optional)
 	    for(int y=0;y<NUM_CHANNELS;y++) {
 		channel_index[y] = 0;

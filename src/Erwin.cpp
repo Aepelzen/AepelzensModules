@@ -73,7 +73,7 @@ void Erwin::step() {
     //limit to 1 octave
     transposeSemi = (int)round(inputs[SEMI_INPUT].value /10.0 * 12.0);
 
-    int semi = (int)round(freq * 12);
+    int semi = (int)(round(freq) * 12);
     //find last matching note in scale
     int lastValidIndex = 0;
     for(int i=semi;i>=0;i--) {
