@@ -15,6 +15,7 @@ struct GateSeq : Module {
 	INIT_PARAM,
 	COPY_PARAM,
 	MERGE_PARAM,
+	MERGE_MODE_PARAM,
 	PATTERN_SWITCH_MODE_PARAM,
 	CHANNEL_PROB_PARAM,
 	BANK_PARAM = CHANNEL_PROB_PARAM + NUM_CHANNELS,
@@ -39,8 +40,8 @@ struct GateSeq : Module {
 	RUNNING_LIGHT,
 	RESET_LIGHT,
 	COPY_LIGHT,
-	LENGTH_LIGHT,
 	MERGE_LIGHT,
+	LENGTH_LIGHT,
 	BANK_LIGHTS,
 	PATTERN_LIGHTS = BANK_LIGHTS + 8,
 	GATE_LIGHTS = PATTERN_LIGHTS + 8,
@@ -52,8 +53,18 @@ struct GateSeq : Module {
     json_t *toJson() override;
     void fromJson(json_t *rootJ) override;
     void initializePattern(int bank, int pattern);
-    void copyPattern(int basePattern, int bank, int pattern);
+    void copyPattern(int sourcePattern, int bank, int pattern);
     void processPatternSelection();
+    bool mergePatterns(bool gate, int channel, int index, bool step);
+
+    enum MergeModes {
+	MERGE_OR,
+	MERGE_AND,
+	MERGE_XOR,
+	MERGE_NOR,
+	MERGE_RAND,
+    };
+    int mergeMode = 0;
 
     struct patternInfo {
 	bool gates[NUM_GATES] = {false};
@@ -66,8 +77,10 @@ struct GateSeq : Module {
 
     int bank = 0;
     int pattern = 0;
-    //source pattern for copying and merging (this uses the actual pattern index 0..64)
-    int basePattern = 0;
+    //source pattern for copying (this uses the actual pattern index 0..64)
+    int sourcePattern = 0;
+    //source pattern for merging
+    int mergePattern = 0;
 
     SchmittTrigger clockTrigger; // for external clock
     SchmittTrigger channelClockTrigger[NUM_CHANNELS]; // for external clock
@@ -75,6 +88,7 @@ struct GateSeq : Module {
     SchmittTrigger resetTrigger;
     SchmittTrigger initTrigger;
     SchmittTrigger copyTrigger;
+    SchmittTrigger mergeTrigger;
     SchmittTrigger lengthTrigger;
     SchmittTrigger gateTriggers[NUM_GATES];
     SchmittTrigger bankTriggers[8];
@@ -86,9 +100,11 @@ struct GateSeq : Module {
     int channel_index[NUM_CHANNELS] = {};
     bool running = true;
     bool copyMode = false;
+    bool mergeParam = false;
     bool lengthMode = false;
     float phase = 0.0;
     float prob = 0;
+    float rand = 0;
 
     void reset() override {
 	for(int y=0;y<64;y++) {
@@ -117,7 +133,7 @@ struct GateSeq : Module {
 void GateSeq::step() {
     float gSampleRate = engineGetSampleRate();
     //const float lightLambda = 0.075;
-    const float lightLambda = 0.1;
+    const float lightLambda = 0.05;
 
     // Run
     if (runningTrigger.process(params[RUN_PARAM].value))
@@ -179,6 +195,11 @@ void GateSeq::step() {
 
 	    pulse = gatePulse[y].process(1.0 / engineGetSampleRate());
 	    bool gateOn = currentPattern->gates[y*NUM_STEPS + channel_index[y]];
+
+	    if(mergeParam) {
+		//gateOn = gateOn || patterns[mergePattern].gates[y*NUM_STEPS + channel_index[y]];
+		gateOn =  mergePatterns(gateOn, y, channel_index[y], channelStep);
+	    }
 	    //probability
 	    if(prob > channelProb) {
 		gateOn = false;
@@ -261,11 +282,12 @@ GateSeqWidget::GateSeqWidget() {
     addParam(createParam<LEDBezel>(Vec(170, 98), module, GateSeq::INIT_PARAM , 0.0, 1.0, 0.0));
 
     addParam(createParam<LEDBezel>(Vec(200, 98), module, GateSeq::LENGTH_PARAM , 0.0, 1.0, 0.0));
-    addChild(createLight<MuteLight<GreenRedLight>>(Vec(202, 100), module, GateSeq::LENGTH_LIGHT));
+    addChild(createLight<MuteLight<RedLight>>(Vec(202, 100), module, GateSeq::LENGTH_LIGHT));
     addParam(createParam<CKSS>(Vec(139, 55), module, GateSeq::PATTERN_SWITCH_MODE_PARAM , 0.0, 1.0, 0.0));
 
-    addParam(createParam<LEDBezel>(Vec(465, 50), module, GateSeq::MERGE_PARAM , 0.0, 1.0, 0.0));
-    addChild(createLight<MuteLight<RedLight>>(Vec(467, 52), module, GateSeq::MERGE_LIGHT));
+    addParam(createParam<LEDBezel>(Vec(465, 55), module, GateSeq::MERGE_PARAM , 0.0, 1.0, 0.0));
+    addChild(createLight<MuteLight<RedLight>>(Vec(467, 57), module, GateSeq::MERGE_LIGHT));
+    addParam(createParam<RoundSmallBlackKnob>(Vec(463, 90), module, GateSeq::MERGE_MODE_PARAM , 0.0, 5.0, 0.0));
 
     //pattern/bank buttons
     for(int i=0;i<8;i++) {
@@ -295,12 +317,18 @@ void GateSeq::processPatternSelection() {
     //copy pattern
     if(copyTrigger.process(params[COPY_PARAM].value)) {
 	if(copyMode)
-	    copyPattern(basePattern, bank, pattern);
+	    copyPattern(sourcePattern, bank, pattern);
 	else
-	    basePattern = 8*bank + pattern;
+	    sourcePattern = 8*bank + pattern;
 	copyMode = (!copyMode);
     }
     lights[COPY_LIGHT].value = (copyMode) ? 1.0 : 0.0;
+
+    //merge Mode
+    if(mergeTrigger.process(params[MERGE_PARAM].value)) {
+	mergeParam = !mergeParam;
+    }
+    lights[MERGE_LIGHT].value = (mergeParam) ? 1.0 : 0.0;
 
     //bank
     for(int i=0;i<8;i++) {
@@ -324,20 +352,67 @@ void GateSeq::processPatternSelection() {
 	    pattern = in;
 	}
 	else if(patternTriggers[i].process(params[PATTERN_PARAM + i].value)) {
-	    pattern = i;
-	    //reset index
-	    if(params[PATTERN_SWITCH_MODE_PARAM].value) {
-		for(int y=0;y<NUM_CHANNELS;y++) {
-		    channel_index[y] = -1;
+	    if(mergeParam) {
+		mergePattern = 8*bank + i;
+	    }
+	    else {
+		pattern = i;
+		//reset index
+		if(params[PATTERN_SWITCH_MODE_PARAM].value) {
+		    for(int y=0;y<NUM_CHANNELS;y++) {
+			channel_index[y] = -1;
+		    }
 		}
 	    }
 	    break;
 	}
     }
     for(int i=0;i<8;i++) {
-	lights[PATTERN_LIGHTS + i].value = (pattern == i) ? 1.0 : 0.0;
+	lights[PATTERN_LIGHTS + i].value = (pattern == i || (mergeParam && mergePattern == i)) ? 1.0 : 0.0;
     }
     currentPattern = &patterns[8*bank + pattern];
+}
+
+/**
+   Merge Pattern steps
+
+   @param gate Gate State of the base Pattern
+   @param channel
+   @param index Position in channel
+   @param step true if the index increased in the active cycle (i.e. we have a new step)
+*/
+bool GateSeq::mergePatterns(bool gate, int channel, int index, bool step) {
+    bool out = false;
+    mergeMode = params[MERGE_MODE_PARAM].value;
+    if(step)
+	rand = randomf();
+
+    switch (mergeMode) {
+    case MERGE_OR: {
+	out = gate || patterns[mergePattern].gates[channel*NUM_STEPS + index];
+	break;
+    }
+    case MERGE_AND: {
+	out = gate && patterns[mergePattern].gates[channel*NUM_STEPS + index];
+	break;
+    }
+    case MERGE_XOR: {
+	out = gate ^ patterns[mergePattern].gates[channel*NUM_STEPS + index];
+	break;
+    }
+    case MERGE_NOR: {
+	out = !(gate || patterns[mergePattern].gates[channel*NUM_STEPS + index]);
+	break;
+    }
+    case MERGE_RAND: {
+	if(rand > 0.5)
+	    out = gate;
+	else
+	    out = patterns[mergePattern].gates[channel*NUM_STEPS + index];
+	break;
+    }
+    }
+    return out;
 }
 
 void GateSeq::initializePattern(int bank, int pattern) {
@@ -354,18 +429,18 @@ void GateSeq::initializePattern(int bank, int pattern) {
 /**
    Copy a pattern
 
-   @param basePattern The Source pattern to be copied
+   @param sourcePattern The Source pattern to be copied
    @param bank The bank of the destination pattern
    @param pattern The pattern of the destination pattern
 */
-void GateSeq::copyPattern(int basePattern, int bank, int pattern) {
+void GateSeq::copyPattern(int sourcePattern, int bank, int pattern) {
     //currentPattern = &patterns[8*bank + pattern];
-    printf("Copying pattern: %d to bank: %d, pattern:%d\n", basePattern, bank, pattern);
+    printf("Copying pattern: %d to bank: %d, pattern:%d\n", sourcePattern, bank, pattern);
     for (int i=0; i<NUM_GATES; i++) {
-	patterns[8*bank + pattern].gates[i] = patterns[basePattern].gates[i];
+	patterns[8*bank + pattern].gates[i] = patterns[sourcePattern].gates[i];
     }
     for(int i=0;i<NUM_CHANNELS;i++) {
-	patterns[8*bank + pattern].length[i] = patterns[basePattern].length[i];
+	patterns[8*bank + pattern].length[i] = patterns[sourcePattern].length[i];
     }
 }
 
