@@ -10,9 +10,6 @@ extern Plugin *plugin;
 
 struct GateSeqWidget : ModuleWidget {
 	GateSeqWidget();
-    //ParamWidget *lengthParams[8];
-//	ParamWidget *probParams[8];
-    //void updateValues();
 };
 
 struct QuadSeqWidget : ModuleWidget {

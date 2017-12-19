@@ -4,8 +4,22 @@
 
 ## GateSeq
 
-A Gate Sequencer intended for polyrhythms. Every channel has it's own clock input and length. There is also a global clock input and an internal clock.
-Furthermore each channel has a probability setting that sets the probability that an active beat will be sent out.
+A Gate Sequencer with pattern support intended for polyrhythms. Every channel has it's own clock input and length. There is also a global clock input and an internal clock. Furthermore each channel has a probability setting that sets the probability that an active beat will be sent out.
+
+To set the length for a channel hit the length button. It will turn red to indicate that you are now in length-mode. In this mode every channel has a red step button (or a yellow one if that step is also active) which indicates the last step in the sequence. Just press another step to change the length. To leave length-mode push the length button again. The length settings are tied to the pattern and will get copied if you copy a pattern.
+
+To copy a pattern, select the pattern you want to copy first. Push the copy button to enable copy-mode, switch to the target pattern and hit the copy button again to paste your pattern. This will overwrite the target pattern.
+
+The switch over the pattern input determines wheater all channel positions should be reset when switching patterns (i. e. start the pattern from the beginning). This might be useful to realign the channels when switching from a pattern that uses different lengths per channel. When inactive the pattern will just keep running.
+
+### Pattern Merging (work in progress)
+
+You can create new patterns out of existing ones by merging them. The workflow is similar to copying. Select the base-pattern first and push the merge button. Now select another pattern and this new pattern will get merged with the base-pattern according to the merge-mode (selected with the knob below the merge button). The base pattern defines the channel lengths (this might change in future versions). Currently the following merge modes are available:
+* OR
+* AND
+* XOR
+* NOR
+* Random (choose one of the two patterns randomly for each step and channel)
 
 ## QuadSeq
 
