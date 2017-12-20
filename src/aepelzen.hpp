@@ -50,3 +50,7 @@ struct WalkerWidget : ModuleWidget
 struct ErwinWidget : ModuleWidget {
 	ErwinWidget();
 };
+
+struct DiceWidget : ModuleWidget {
+	DiceWidget();
+};
