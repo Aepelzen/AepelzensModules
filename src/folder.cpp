@@ -113,7 +113,7 @@ float fold3(float in, float t) {
 
 void Folder::step()
 {
-  gain = clampf(params[GAIN_PARAM].value + (inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value), 0.0,10.0);
+  gain = clampf(params[GAIN_PARAM].value + (inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value), 0.0,14.0);
   sym = clampf(params[SYM_PARAM].value + inputs[SYM_INPUT].value/5.0 * params[SYM_ATT_PARAM].value, -1.0, 1.0);
   in = (inputs[GATE_INPUT].value/5.0 + sym) * gain;
 
@@ -185,7 +185,7 @@ FolderWidget::FolderWidget()
 
   //note: SmallKnob size = 28px, Trimpot = 17 px
   addParam(createParam<BefacoSwitch>(Vec(16, 50), module, Folder::STAGE_PARAM, 1, 3, 2));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 100), module, Folder::GAIN_PARAM, 0.0, 10.0, 1.0));
+  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 100), module, Folder::GAIN_PARAM, 0.0, 14.0, 1.0));
   addParam(createParam<Trimpot>(Vec(21.5, 145), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
   addParam(createParam<RoundSmallBlackKnob>(Vec(16, 185), module, Folder::SYM_PARAM, -1.0, 1.0, 0.0));
   addParam(createParam<Trimpot>(Vec(21.5, 230), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));
