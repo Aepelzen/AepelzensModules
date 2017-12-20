@@ -62,14 +62,14 @@ A wavefolder. Works best with simple input signals like sine or triangle waves. 
 
 Note: this module shifts the phase of the input-signal (because of the upsampling)
 
-## New Module: Walker
+## Walker
 
 A CV generator that simulates a random walk. At every step the CV output changes by either plus or minus stepsize. The decision is affected by the Symmetry parameter. At 12 o'clock both directions are equally likely, fully ccw all steps move downward, full cw all steps move upward. The Switch controls the behaviour at the range boundaries. There are 3 possible modes:
 * Clip the signal at the boundary and just wait for it to eventually get back into the allowed range (depending on the symmetry parameter this might not happen or take a long time)
 * Reset to zero
 * Reset to random value within ± range/2 (this is also affected by the Symmetry parameter)
 
-## New Module: Erwin
+## Erwin
 
 A 4-channel scale-quantiser with user-definable scales. All inputs/outputs use the same scale, however you can transpose every channel seperately by ±4 octaves (the 4 small trimpots). You can also transpose all outputs by 4 octaves and/or 12 semitonses via CV inputs.
 

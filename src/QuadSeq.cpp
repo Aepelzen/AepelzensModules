@@ -237,9 +237,7 @@ void QuadSeq::step() {
       stepLights[y][i] = (i == channel_index[y]) ? 1.0 : 0.0;
       lights[CHANNEL_LIGHTS + i + 8*y].value = stepLights[y][i];
     }
-
   }
-
   resetLight -= resetLight / lightLambda / engineGetSampleRate();
   lights[RESET_LIGHT].value = resetLight;
 }

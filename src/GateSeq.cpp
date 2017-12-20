@@ -184,6 +184,9 @@ void GateSeq::step() {
 	    if (channelStep) {
 		//int numSteps = clampi(roundf(params[CHANNEL_STEPS_PARAM+y].value), 1, NUM_STEPS);
 		int numSteps = currentPattern->length[y];
+		//workaround to fix crashes on old saves without pattern support
+		if(numSteps == 0)
+		    numSteps = 16;
 		channel_index[y] = (channel_index[y] + 1) % numSteps;
 		stepLights[y*NUM_STEPS + channel_index[y]] = 1.0;
 		gatePulse[y].trigger(1e-3);

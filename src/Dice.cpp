@@ -107,7 +107,7 @@ void Dice::step() {
 	pulse = gatePulse[y].process(1.0 / engineGetSampleRate());
 	bool gateOn = (randomValue < (params[COLUMN1_PARAM + channel_index[y] + y * 8].value)) ? 1.0 : 0.0;
 	gateOn = gateOn && !pulse;
-	outputs[GATE_OUTPUT + y].value = gateOn;
+	outputs[GATE_OUTPUT + y].value = (gateOn) ? 10.0 : 0.0;
 	
 	for(int i=0;i<NUM_STEPS;i++) {
 	    lights[STEP_LIGHT + y*NUM_STEPS + i].value = (i == channel_index[y] ? 1.0 : 0.0);   
