@@ -255,10 +255,10 @@ QuadSeqWidget::QuadSeqWidget() {
     addChild(panel);
   }
 
-  addChild(createScrew<ScrewSilver>(Vec(15, 0)));
-  addChild(createScrew<ScrewSilver>(Vec(box.size.x-30, 0)));
-  addChild(createScrew<ScrewSilver>(Vec(15, 365)));
-  addChild(createScrew<ScrewSilver>(Vec(box.size.x-30, 365)));
+  // addChild(createScrew<ScrewSilver>(Vec(5, 0)));
+  // addChild(createScrew<ScrewSilver>(Vec(box.size.x-20, 0)));
+  // addChild(createScrew<ScrewSilver>(Vec(5, 365)));
+  // addChild(createScrew<ScrewSilver>(Vec(box.size.x-20, 365)));
 
   //original 56
   addParam(createParam<RoundSmallBlackKnob>(Vec(56, 35), module, QuadSeq::CLOCK_PARAM, -2.0, 6.0, 2.0));

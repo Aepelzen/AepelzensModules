@@ -1,5 +1,6 @@
 #include "aepelzen.hpp"
 #include "dsp/digital.hpp"
+#include <math.h>
 
 #define MAX_REPS 8
 #define MAX_TIME 1
@@ -51,6 +52,7 @@ struct Burst : Module
       CV_MODE_RANDOM,
     };
 
+  const float euler = exp(1);
   float timeParam = 0;
   float clockedTimeParam = 0;
   float pulseParam = 4;
@@ -100,8 +102,11 @@ void Burst::step()
   float jitter = params[JITTER_PARAM].value;
   float randomDelta = 0;
 
-  timeParam = clampf(params[TIME_PARAM].value + (params[TIME_ATT_PARAM].value * inputs[TIME_INPUT].value / 5.0 * MAX_TIME),0.0, MAX_TIME);
-  pulseParam = clampf(params[REP_PARAM].value + (inputs[REP_INPUT].value * params[REP_ATT_PARAM].value /5.0 * MAX_REPS), 0.0, MAX_REPS);
+  timeParam = clampf(params[TIME_PARAM].value + (params[TIME_ATT_PARAM].value * inputs[TIME_INPUT].value / 10.0 * MAX_TIME),0.0, MAX_TIME);
+  pulseParam = clampf(params[REP_PARAM].value + (inputs[REP_INPUT].value * params[REP_ATT_PARAM].value /10.0 * MAX_REPS), 0.0, MAX_REPS);
+
+  //exponential scaling for timeparam
+  timeParam = (exp(timeParam) - 1)/(euler - 1);
 
   if (inputs[CLOCK_INPUT].active) {
     clockTimer += delta;
