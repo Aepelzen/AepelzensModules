@@ -32,11 +32,11 @@ A four channel sequencer (The knobs are made by bogaudio). Like GateSeq each cha
 
 ## New Module: Dice
 
-Another sequencer. This one is built around probabilities and comes with all the usual
-goodies (per channel clock, length and playback modes). The knobs set the probability for
-a step to be active. Unfortunately there is not enough space for labels (or a global clock
-input) but this should be simple enough to work without. The upper knob in the gray area
-sets the channel length, the lower one the playback mode (these work like in QuadSeq). The
+Another sequencer. This one is built around probabilities and comes with all the usual goodies (per
+channel clock, length and playback modes). All unconnected clock inputs are normalised to the first
+clock input. The knobs set the probability for a step to be active. Unfortunately there is not
+enough space for labels but this should be simple enough to work without. The upper knob in the gray
+area sets the channel length, the lower one the playback mode (these work like in QuadSeq). The
 button in the upper left corner resets the playback positions.
 
 ## Burst

@@ -36,7 +36,10 @@ struct Dice : Module {
 	MODE_RANDOM
     };
 
-    Dice() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
+    Dice() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
+	//initialize RNG
+	//randomSeedTime();
+    }
     void step() override;
 
     SchmittTrigger channelClockTrigger[NUM_CHANNELS]; // for external clock
@@ -52,15 +55,20 @@ struct Dice : Module {
 
 void Dice::step() {
 
+    //normalize to first clock input
+    for(int y=1;y<NUM_CHANNELS;y++) {
+	if(!inputs[CHANNEL_CLOCK_INPUT + y].active) {
+	    inputs[CHANNEL_CLOCK_INPUT + y].value = inputs[CHANNEL_CLOCK_INPUT].value;
+	}
+    }
+
     for(int y=0;y<NUM_CHANNELS;y++) {
 
 	bool pulse = false;
 	bool channelStep = false;
-    
-	if(inputs[CHANNEL_CLOCK_INPUT + y].active) {
-	    if (channelClockTrigger[y].process(inputs[CHANNEL_CLOCK_INPUT + y].value)) {
-		channelStep = true;
-	    }
+
+	if (channelClockTrigger[y].process(inputs[CHANNEL_CLOCK_INPUT + y].value)) {
+	    channelStep = true;
 	}
 
 	if (channelStep) {
