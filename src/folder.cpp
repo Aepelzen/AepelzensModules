@@ -88,7 +88,7 @@ struct Folder : Module
 float fold(float in, float threshold) {
   float out;
   if (in>threshold || in<-threshold) {
-    out = clampf(fabs(fabs(fmod(in - threshold, threshold*4)) - threshold*2) - threshold, -5.0,5.0); 
+    out = clampf(fabs(fabs(fmod(in - threshold, threshold*4)) - threshold*2) - threshold, -5.0,5.0);
   }
   else {
     out = in;
@@ -166,10 +166,16 @@ void Folder::step()
   return;
 }
 
-FolderWidget::FolderWidget()
+
+struct FolderWidget : ModuleWidget
 {
-  auto *module = new Folder();
-  setModule(module);
+	SVGPanel *panel;
+	FolderWidget(Folder *module);
+	Menu *createContextMenu() override;
+};
+
+FolderWidget::FolderWidget(Folder *module) : ModuleWidget(module)
+{
   //box.size = Vec(6 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT);
   box.size = Vec(4 * 15, RACK_GRID_HEIGHT);
 
@@ -178,23 +184,23 @@ FolderWidget::FolderWidget()
   panel->setBackground(SVG::load(assetPlugin(plugin, "res/Folder.svg")));
   addChild(panel);
 
-  // addChild(createScrew<ScrewSilver>(Vec(15, 0)));
-  // addChild(createScrew<ScrewSilver>(Vec(box.size.x - 30, 0)));
-  // addChild(createScrew<ScrewSilver>(Vec(15, 365)));
-  // addChild(createScrew<ScrewSilver>(Vec(box.size.x - 30, 365)));
+  // addChild(Widget::create<ScrewSilver>(Vec(15, 0)));
+  // addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 30, 0)));
+  // addChild(Widget::create<ScrewSilver>(Vec(15, 365)));
+  // addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 30, 365)));
 
   //note: SmallKnob size = 28px, Trimpot = 17 px
-  addParam(createParam<BefacoSwitch>(Vec(16, 50), module, Folder::STAGE_PARAM, 1, 3, 2));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 100), module, Folder::GAIN_PARAM, 0.0, 14.0, 1.0));
-  addParam(createParam<Trimpot>(Vec(21.5, 145), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 185), module, Folder::SYM_PARAM, -1.0, 1.0, 0.0));
-  addParam(createParam<Trimpot>(Vec(21.5, 230), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));
+  addParam(ParamWidget::create<BefacoSwitch>(Vec(16, 50), module, Folder::STAGE_PARAM, 1, 3, 2));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 100), module, Folder::GAIN_PARAM, 0.0, 14.0, 1.0));
+  addParam(ParamWidget::create<Trimpot>(Vec(21.5, 145), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 185), module, Folder::SYM_PARAM, -1.0, 1.0, 0.0));
+  addParam(ParamWidget::create<Trimpot>(Vec(21.5, 230), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));
 
 
-  addInput(createInput<PJ301MPort>(Vec(3, 320), module, Folder::GATE_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(3, 276), module, Folder::GAIN_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(30, 276), module, Folder::SYM_INPUT));;
-  addOutput(createOutput<PJ301MPort>(Vec(30,320), module, Folder::GATE_OUTPUT));
+  addInput(Port::create<PJ301MPort>(Vec(3, 320), Port::INPUT, module, Folder::GATE_INPUT));;
+  addInput(Port::create<PJ301MPort>(Vec(3, 276), Port::INPUT, module, Folder::GAIN_INPUT));;
+  addInput(Port::create<PJ301MPort>(Vec(30, 276), Port::INPUT, module, Folder::SYM_INPUT));;
+  addOutput(Port::create<PJ301MPort>(Vec(30,320), Port::OUTPUT, module, Folder::GATE_OUTPUT));
 }
 
 struct FolderMenuItem : MenuItem {
@@ -219,3 +225,5 @@ Menu *FolderWidget::createContextMenu() {
 
 	return menu;
 }
+
+Model *modelFolder = Model::create<Folder, FolderWidget>("Aepelzens Modules", "folder", "Manifold", WAVESHAPER_TAG);

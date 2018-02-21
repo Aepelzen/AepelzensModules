@@ -72,10 +72,14 @@ void Walker::step()
   return;
 }
 
-WalkerWidget::WalkerWidget()
+struct WalkerWidget : ModuleWidget
 {
-  auto *module = new Walker();
-  setModule(module);
+	SVGPanel *panel;
+	WalkerWidget(Walker *module);
+};
+
+WalkerWidget::WalkerWidget(Walker *module) : ModuleWidget(module)
+{
   box.size = Vec(4 * 15, RACK_GRID_HEIGHT);
 
   panel = new SVGPanel();
@@ -83,15 +87,17 @@ WalkerWidget::WalkerWidget()
   panel->setBackground(SVG::load(assetPlugin(plugin, "res/Walker.svg")));
   addChild(panel);
 
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 40), module, Walker::STEP_PARAM, 0.0, 1.0, 0.1));
-  addParam(createParam<Trimpot>(Vec(21.5, 80), module, Walker::STEP_ATT_PARAM, -1.0, 1.0, 0));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 110), module, Walker::RANGE_PARAM, 0, 5.0, 2.0));
-  addParam(createParam<Trimpot>(Vec(21.5, 150), module, Walker::RANGE_ATT_PARAM, -1.0, 1.0, 0.0));
-  addParam(createParam<BefacoSwitch>(Vec(16, 172.5), module, Walker::RANGE_MODE_PARAM, 1, 3, 1));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(16, 210), module, Walker::SYM_PARAM, -1.0, 1.0, 0));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 40), module, Walker::STEP_PARAM, 0.0, 1.0, 0.1));
+  addParam(ParamWidget::create<Trimpot>(Vec(21.5, 80), module, Walker::STEP_ATT_PARAM, -1.0, 1.0, 0));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 110), module, Walker::RANGE_PARAM, 0, 5.0, 2.0));
+  addParam(ParamWidget::create<Trimpot>(Vec(21.5, 150), module, Walker::RANGE_ATT_PARAM, -1.0, 1.0, 0.0));
+  addParam(ParamWidget::create<BefacoSwitch>(Vec(16, 172.5), module, Walker::RANGE_MODE_PARAM, 1, 3, 1));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 210), module, Walker::SYM_PARAM, -1.0, 1.0, 0));
 
-  addInput(createInput<PJ301MPort>(Vec(3, 320), module, Walker::CLOCK_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(3, 276), module, Walker::STEP_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(30, 276), module, Walker::RANGE_INPUT));;
-  addOutput(createOutput<PJ301MPort>(Vec(30,320), module, Walker::CV_OUTPUT));
+  addInput(Port::create<PJ301MPort>(Vec(3, 320), Port::INPUT, module, Walker::CLOCK_INPUT));;
+  addInput(Port::create<PJ301MPort>(Vec(3, 276), Port::INPUT, module, Walker::STEP_INPUT));;
+  addInput(Port::create<PJ301MPort>(Vec(30, 276), Port::INPUT, module, Walker::RANGE_INPUT));;
+  addOutput(Port::create<PJ301MPort>(Vec(30,320), Port::OUTPUT, module, Walker::CV_OUTPUT));
 }
+
+Model *modelWalker = Model::create<Walker, WalkerWidget>("Aepelzens Modules", "Walker", "Random Walk", UTILITY_TAG, RANDOM_TAG);

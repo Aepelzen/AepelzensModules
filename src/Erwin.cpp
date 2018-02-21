@@ -106,9 +106,11 @@ struct MuteLight : BASE {
 	}
 };
 
-ErwinWidget::ErwinWidget() {
-  Erwin *module = new Erwin();
-  setModule(module);
+struct ErwinWidget : ModuleWidget {
+	ErwinWidget(Erwin *module);
+};
+
+ErwinWidget::ErwinWidget(Erwin *module) : ModuleWidget(module) {
   box.size = Vec(15*8, 380);
 
   {
@@ -118,39 +120,41 @@ ErwinWidget::ErwinWidget() {
     addChild(panel);
   }
 
-  addChild(createScrew<ScrewSilver>(Vec(15, 0)));
-  addChild(createScrew<ScrewSilver>(Vec(box.size.x-30, 0)));
-  addChild(createScrew<ScrewSilver>(Vec(15, 365)));
-  addChild(createScrew<ScrewSilver>(Vec(box.size.x-30, 365)));
+  addChild(Widget::create<ScrewSilver>(Vec(15, 0)));
+  addChild(Widget::create<ScrewSilver>(Vec(box.size.x-30, 0)));
+  addChild(Widget::create<ScrewSilver>(Vec(15, 365)));
+  addChild(Widget::create<ScrewSilver>(Vec(box.size.x-30, 365)));
 
-  addInput(createInput<PJ301MPort>(Vec(22.5, 42), module, Erwin::TRANSPOSE_INPUT));
-  addInput(createInput<PJ301MPort>(Vec(76, 42), module, Erwin::SEMI_INPUT));
+  addInput(Port::create<PJ301MPort>(Vec(22.5, 42), Port::INPUT, module, Erwin::TRANSPOSE_INPUT));
+  addInput(Port::create<PJ301MPort>(Vec(76, 42), Port::INPUT, module, Erwin::SEMI_INPUT));
 
   for(int i=0;i<4;i++) {
-    addOutput(createOutput<PJ301MPort>(Vec(76, 235 + i*30), module, Erwin::OUT_OUTPUT + i));
-    addInput(createInput<PJ301MPort>(Vec(76, 100 +i*30), module, Erwin::IN_INPUT + i));
+    addOutput(Port::create<PJ301MPort>(Vec(76, 235 + i*30), Port::OUTPUT, module, Erwin::OUT_OUTPUT + i));
+    addInput(Port::create<PJ301MPort>(Vec(76, 100 +i*30), Port::INPUT, module, Erwin::IN_INPUT + i));
   }
 
-  addParam(createParam<Trimpot>(Vec(16, 90), module, Erwin::CHANNEL_TRANSPOSE_PARAM, -4, 4, 0));
-  addParam(createParam<Trimpot>(Vec(38, 90), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 1, -4, 4, 0));
-  addParam(createParam<Trimpot>(Vec(16, 117.5), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 2, -4, 4, 0));
-  addParam(createParam<Trimpot>(Vec(38, 117.5), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 3, -4, 4, 0));
+  addParam(ParamWidget::create<Trimpot>(Vec(16, 90), module, Erwin::CHANNEL_TRANSPOSE_PARAM, -4, 4, 0));
+  addParam(ParamWidget::create<Trimpot>(Vec(38, 90), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 1, -4, 4, 0));
+  addParam(ParamWidget::create<Trimpot>(Vec(16, 117.5), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 2, -4, 4, 0));
+  addParam(ParamWidget::create<Trimpot>(Vec(38, 117.5), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 3, -4, 4, 0));
 
   //Note buttons
   int white=0;
   int black = 0;
   for(int i=0; i<12; i++) {
     if (i == 1 || i == 3 || i == 6 || i == 8 || i == 10 ) {
-      addParam(createParam<LEDBezel>(Vec(10,311.5 - black*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
-      addChild(createLight<MuteLight<GreenLight>>(Vec(12, 313.5 - black*30), module, Erwin::NOTE_LIGHT+i));
+      addParam(ParamWidget::create<LEDBezel>(Vec(10,311.5 - black*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
+      addChild(ModuleLightWidget::create<MuteLight<GreenLight>>(Vec(12, 313.5 - black*30), module, Erwin::NOTE_LIGHT+i));
       black++;
     }
     else {
       if(i == 4)
 	black++;
-      addParam(createParam<LEDBezel>(Vec(35,326.5 - white*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
-      addChild(createLight<MuteLight<GreenLight>>(Vec(37, 328.5 - white*30), module, Erwin::NOTE_LIGHT+i));
+      addParam(ParamWidget::create<LEDBezel>(Vec(35,326.5 - white*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
+      addChild(ModuleLightWidget::create<MuteLight<GreenLight>>(Vec(37, 328.5 - white*30), module, Erwin::NOTE_LIGHT+i));
       white++;
     }
   }
 }
+
+Model *modelErwin = Model::create<Erwin, ErwinWidget>("Aepelzens Modules", "Erwin", "Erwin", UTILITY_TAG);

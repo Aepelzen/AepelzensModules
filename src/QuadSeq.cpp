@@ -243,9 +243,11 @@ void QuadSeq::step() {
 }
 
 
-QuadSeqWidget::QuadSeqWidget() {
-  QuadSeq *module = new QuadSeq();
-  setModule(module);
+struct QuadSeqWidget : ModuleWidget {
+	QuadSeqWidget(QuadSeq *module);
+};
+
+QuadSeqWidget::QuadSeqWidget(QuadSeq *module) : ModuleWidget(module) {
   box.size = Vec(15*22, 380);
 
   {
@@ -255,34 +257,36 @@ QuadSeqWidget::QuadSeqWidget() {
     addChild(panel);
   }
 
-  // addChild(createScrew<ScrewSilver>(Vec(5, 0)));
-  // addChild(createScrew<ScrewSilver>(Vec(box.size.x-20, 0)));
-  // addChild(createScrew<ScrewSilver>(Vec(5, 365)));
-  // addChild(createScrew<ScrewSilver>(Vec(box.size.x-20, 365)));
+  // addChild(Widget::create<ScrewSilver>(Vec(5, 0)));
+  // addChild(Widget::create<ScrewSilver>(Vec(box.size.x-20, 0)));
+  // addChild(Widget::create<ScrewSilver>(Vec(5, 365)));
+  // addChild(Widget::create<ScrewSilver>(Vec(box.size.x-20, 365)));
 
   //original 56
-  addParam(createParam<RoundSmallBlackKnob>(Vec(56, 35), module, QuadSeq::CLOCK_PARAM, -2.0, 6.0, 2.0));
-  addParam(createParam<LEDButton>(Vec(60, 82), module, QuadSeq::RUN_PARAM, 0.0, 1.0, 0.0));
-  addChild(createLight<MediumLight<GreenLight>>(Vec(64.4, 86.4), module, QuadSeq::RUNNING_LIGHT));
-  addParam(createParam<LEDButton>(Vec(60, 120), module, QuadSeq::RESET_PARAM, 0.0, 1.0, 0.0));
-  addChild(createLight<MediumLight<GreenLight>>(Vec(64.4, 124.4), module, QuadSeq::RESET_LIGHT));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(56, 35), module, QuadSeq::CLOCK_PARAM, -2.0, 6.0, 2.0));
+  addParam(ParamWidget::create<LEDButton>(Vec(60, 82), module, QuadSeq::RUN_PARAM, 0.0, 1.0, 0.0));
+  addChild(ModuleLightWidget::create<MediumLight<GreenLight>>(Vec(64.4, 86.4), module, QuadSeq::RUNNING_LIGHT));
+  addParam(ParamWidget::create<LEDButton>(Vec(60, 120), module, QuadSeq::RESET_PARAM, 0.0, 1.0, 0.0));
+  addChild(ModuleLightWidget::create<MediumLight<GreenLight>>(Vec(64.4, 124.4), module, QuadSeq::RESET_LIGHT));
 
-  addInput(createInput<PJ301MPort>(Vec(20, 36), module, QuadSeq::CLOCK_INPUT));
-  addInput(createInput<PJ301MPort>(Vec(20, 79), module, QuadSeq::EXT_CLOCK_INPUT));
-  addInput(createInput<PJ301MPort>(Vec(20, 117), module, QuadSeq::RESET_INPUT));
+  addInput(Port::create<PJ301MPort>(Vec(20, 36), Port::INPUT, module, QuadSeq::CLOCK_INPUT));
+  addInput(Port::create<PJ301MPort>(Vec(20, 79), Port::INPUT, module, QuadSeq::EXT_CLOCK_INPUT));
+  addInput(Port::create<PJ301MPort>(Vec(20, 117), Port::INPUT, module, QuadSeq::RESET_INPUT));
 
 
   for (int i=0;i<NUM_CHANNELS;i++) {
-    //addParam(createParam<RoundSmallBlackKnob>(Vec(135 + i*48, 56), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
-    addParam(createParam<RoundSmallBlackKnob>(Vec(105 + i*55, 50), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
-    addParam(createParam<Trimpot>(Vec(98 + i*55, 105), module, QuadSeq::CHANNEL_RANGE_PARAM + i, 0.0, 1.0, 1.0));
-    addParam(createParam<Trimpot>(Vec(120 + i*55, 105), module, QuadSeq::CHANNEL_MODE_PARAM + i, 0, 5, 0));
-    addInput(createInput<PJ301MPort>(Vec(18 + i*38, 350), module, QuadSeq::CHANNEL_CLOCK_INPUT + i));
-    addOutput(createOutput<PJ301MPort>(Vec(172 + i*38, 350), module, QuadSeq::ROW1_OUTPUT + i));
+    //addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(135 + i*48, 56), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
+    addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(105 + i*55, 50), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
+    addParam(ParamWidget::create<Trimpot>(Vec(98 + i*55, 105), module, QuadSeq::CHANNEL_RANGE_PARAM + i, 0.0, 1.0, 1.0));
+    addParam(ParamWidget::create<Trimpot>(Vec(120 + i*55, 105), module, QuadSeq::CHANNEL_MODE_PARAM + i, 0, 5, 0));
+    addInput(Port::create<PJ301MPort>(Vec(18 + i*38, 350), Port::INPUT, module, QuadSeq::CHANNEL_CLOCK_INPUT + i));
+    addOutput(Port::create<PJ301MPort>(Vec(172 + i*38, 350), Port::OUTPUT, module, QuadSeq::ROW1_OUTPUT + i));
     for (int y = 0; y < 8; y++) {
-      //addParam(createParam<RoundSmallBlackKnob>(Vec(18 + y*38 ,175 + i*41), module, QuadSeq::ROW1_PARAM + y + i*8, 0.0, 10.0, 0.0));
-      addParam(createParam<Knob29>(Vec(18 + y*38 ,170 + i*41), module, QuadSeq::ROW1_PARAM + y + i*8, 0.0, 10.0, 0.0));
-      addChild(createLight<SmallLight<RedLight>>(Vec(26.4 + y*38, 200 + i*41), module, QuadSeq::CHANNEL_LIGHTS + y + i*8));
+      //addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(18 + y*38 ,175 + i*41), module, QuadSeq::ROW1_PARAM + y + i*8, 0.0, 10.0, 0.0));
+      addParam(ParamWidget::create<Knob29>(Vec(18 + y*38 ,170 + i*41), module, QuadSeq::ROW1_PARAM + y + i*8, 0.0, 10.0, 0.0));
+      addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(26.4 + y*38, 200 + i*41), module, QuadSeq::CHANNEL_LIGHTS + y + i*8));
     }
   }
 }
+
+Model *modelQuadSeq = Model::create<QuadSeq, QuadSeqWidget>("Aepelzens Modules", "QuadSeq", "Quad Sequencer", SEQUENCER_TAG);

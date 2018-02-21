@@ -1,12 +1,14 @@
+SLUG = "Aepelzens Modules"
+VERSION = 0.6.0dev
+
 # FLAGS += -D v040
 FLAGS += -D v_050_dev
 
-SOURCES = $(wildcard src/*.cpp)
+LDFLAGS += -lsamplerate
 
-include ../../plugin.mk
+SOURCES += $(wildcard src/*.cpp)
 
-dist: all
-	mkdir -p dist/aepelzen
-	cp LICENSE* dist/aepelzen/
-	cp plugin.* dist/aepelzen/
-	cp -R res dist/aepelzen/
+DISTRIBUTABLES += $(wildcard LICENSE*) res
+
+RACK_DIR ?= ../..
+include $(RACK_DIR)/plugin.mk

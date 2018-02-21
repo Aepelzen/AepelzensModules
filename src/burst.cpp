@@ -204,10 +204,15 @@ void Burst::step()
 }
 
 
-BurstWidget::BurstWidget()
+struct BurstWidget : ModuleWidget
 {
-  auto *module = new Burst();
-  setModule(module);
+	SVGPanel *panel;
+	BurstWidget(Burst *module);
+  //void step() override;
+};
+
+BurstWidget::BurstWidget(Burst *module) : ModuleWidget(module)
+{
   //box.size = Vec(6 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT);
   box.size = Vec(6 * 15, RACK_GRID_HEIGHT);
 
@@ -216,31 +221,33 @@ BurstWidget::BurstWidget()
   panel->setBackground(SVG::load(assetPlugin(plugin, "res/Burst.svg")));
   addChild(panel);
 
-  // addChild(createScrew<ScrewSilver>(Vec(15, 0)));
-  // addChild(createScrew<ScrewSilver>(Vec(box.size.x - 30, 0)));
-  // addChild(createScrew<ScrewSilver>(Vec(15, 365)));
-  // addChild(createScrew<ScrewSilver>(Vec(box.size.x - 30, 365)));
+  // addChild(Widget::create<ScrewSilver>(Vec(15, 0)));
+  // addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 30, 0)));
+  // addChild(Widget::create<ScrewSilver>(Vec(15, 365)));
+  // addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 30, 365)));
 
   //note: SmallKnob size = 28px, Trimpot = 17 px
-  //addParam(createParam<LEDBezel>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
-  addParam(createParam<CKD6>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
-  //addParam(createParam<RoundSmallBlackKnob>(Vec(35, 50), module, Burst::REP_PARAM, 1, 8, 4));
-  addParam(createParam<Davies1900hLargeBlackKnob>(Vec(18, 30), module, Burst::REP_PARAM, 0, 8, 4));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(10, 150), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(52, 150), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(10, 195), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
-  addParam(createParam<RoundSmallBlackKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 6, 0));
+  //addParam(ParamWidget::create<LEDBezel>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
+  addParam(ParamWidget::create<CKD6>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
+  //addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(35, 50), module, Burst::REP_PARAM, 1, 8, 4));
+  addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(18, 30), module, Burst::REP_PARAM, 0, 8, 4));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(10, 150), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(52, 150), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(10, 195), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
+  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 6, 0));
 
-  addParam(createParam<Trimpot>(Vec(15.5, 240), module, Burst::REP_ATT_PARAM, -1.0, 1.0, 0.0));
-  addParam(createParam<Trimpot>(Vec(54, 240), module, Burst::TIME_ATT_PARAM, -1.0, 1.0, 0.0));
-  addInput(createInput<PJ301MPort>(Vec(13, 265), module, Burst::REP_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(50, 265), module, Burst::TIME_INPUT));;
+  addParam(ParamWidget::create<Trimpot>(Vec(15.5, 240), module, Burst::REP_ATT_PARAM, -1.0, 1.0, 0.0));
+  addParam(ParamWidget::create<Trimpot>(Vec(54, 240), module, Burst::TIME_ATT_PARAM, -1.0, 1.0, 0.0));
+  addInput(Port::create<PJ301MPort>(Vec(13, 265), Port::INPUT, module, Burst::REP_INPUT));;
+  addInput(Port::create<PJ301MPort>(Vec(50, 265), Port::INPUT, module, Burst::TIME_INPUT));;
 
-  addInput(createInput<PJ301MPort>(Vec(5, 305), module, Burst::GATE_INPUT));;
-  addInput(createInput<PJ301MPort>(Vec(60, 305), module, Burst::CLOCK_INPUT));;
-  addParam(createParam<CKSS>(Vec(38, 300), module, Burst::GATE_MODE_PARAM, 0.0, 1.0, 0.0));
+  addInput(Port::create<PJ301MPort>(Vec(5, 305), Port::INPUT, module, Burst::GATE_INPUT));;
+  addInput(Port::create<PJ301MPort>(Vec(60, 305), Port::INPUT, module, Burst::CLOCK_INPUT));;
+  addParam(ParamWidget::create<CKSS>(Vec(38, 300), module, Burst::GATE_MODE_PARAM, 0.0, 1.0, 0.0));
 
-  addOutput(createOutput<PJ301MPort>(Vec(5,335), module, Burst::CV_OUTPUT));
-  addOutput(createOutput<PJ301MPort>(Vec(32.5,335), module, Burst::EOC_OUTPUT));
-  addOutput(createOutput<PJ301MPort>(Vec(60,335), module, Burst::GATE_OUTPUT));
+  addOutput(Port::create<PJ301MPort>(Vec(5,335), Port::OUTPUT, module, Burst::CV_OUTPUT));
+  addOutput(Port::create<PJ301MPort>(Vec(32.5,335), Port::OUTPUT, module, Burst::EOC_OUTPUT));
+  addOutput(Port::create<PJ301MPort>(Vec(60,335), Port::OUTPUT, module, Burst::GATE_OUTPUT));
 }
+
+Model *modelBurst = Model::create<Burst, BurstWidget>("Aepelzens Modules", "burst", "Burst Generator", SEQUENCER_TAG);
