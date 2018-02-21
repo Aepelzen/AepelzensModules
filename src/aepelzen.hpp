@@ -4,18 +4,6 @@ using namespace rack;
 
 extern Plugin *plugin;
 
-////////////////////
-// module widgets
-////////////////////
-
-struct GateSeqWidget : ModuleWidget {
-	GateSeqWidget();
-};
-
-struct QuadSeqWidget : ModuleWidget {
-	QuadSeqWidget();
-};
-
 // struct dTimeWidget : ModuleWidget {
 // 	dTimeWidget();
 // };
@@ -27,30 +15,11 @@ struct Knob29 : RoundKnob {
 	}
 };
 
-struct BurstWidget : ModuleWidget
-{
-	SVGPanel *panel;
-	BurstWidget();
-  //void step() override;
-};
-
-struct FolderWidget : ModuleWidget
-{
-	SVGPanel *panel;
-	FolderWidget();
-	Menu *createContextMenu() override;
-};
-
-struct WalkerWidget : ModuleWidget
-{
-	SVGPanel *panel;
-	WalkerWidget();
-};
-
-struct ErwinWidget : ModuleWidget {
-	ErwinWidget();
-};
-
-struct DiceWidget : ModuleWidget {
-	DiceWidget();
-};
+extern Model *modelQuadSeq;
+extern Model *modelGateSeq;
+extern Model *modelDice;
+extern Model *modelBurst;
+extern Model *modelFolder;
+extern Model *modelWalker;
+extern Model *modelErwin;
+extern Model *modeldTime;

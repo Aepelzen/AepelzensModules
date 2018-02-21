@@ -132,9 +132,11 @@ void Dice::step() {
 }
 
 
-DiceWidget::DiceWidget() {
-    Dice *module = new Dice();
-    setModule(module);
+struct DiceWidget : ModuleWidget {
+	DiceWidget(Dice *module);
+};
+
+DiceWidget::DiceWidget(Dice *module) : ModuleWidget(module) {
     box.size = Vec(8 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT);
 
     {
@@ -144,16 +146,18 @@ DiceWidget::DiceWidget() {
 	addChild(panel);
     }
 
-    addParam(createParam<LEDButton>(Vec(10, 5), module, Dice::RESET_PARAM, 0.0, 1.0, 0.0));
+    addParam(ParamWidget::create<LEDButton>(Vec(10, 5), module, Dice::RESET_PARAM, 0.0, 1.0, 0.0));
     
     for(int y=0;y<NUM_CHANNELS;y++) {
 	for(int i=0;i<NUM_STEPS;i++) {
-	    addParam(createParam<Trimpot>(Vec(10 + y*27, 30 + i*28), module, Dice::COLUMN1_PARAM + y *NUM_STEPS + i, 0.0, 1.0, 0.0));
-	    addChild(createLight<SmallLight<RedLight>>(Vec(16 + y*27, 50 + i*28), module, Dice::STEP_LIGHT + y *NUM_STEPS + i));
+	    addParam(ParamWidget::create<Trimpot>(Vec(10 + y*27, 30 + i*28), module, Dice::COLUMN1_PARAM + y *NUM_STEPS + i, 0.0, 1.0, 0.0));
+	    addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(16 + y*27, 50 + i*28), module, Dice::STEP_LIGHT + y *NUM_STEPS + i));
 	}
-	addParam(createParam<Trimpot>(Vec(10 + y*27, 265), module, Dice::CHANNEL_STEPS_PARAM + y, 1.0, 8.0, 8.0));
-	addParam(createParam<Trimpot>(Vec(10 + y*27, 290), module, Dice::CHANNEL_MODE_PARAM + y, 0, 5, 0));
-	addInput(createInput<PJ301MPort>(Vec(7+y*27, 310), module, Dice::CHANNEL_CLOCK_INPUT + y));
-	addOutput(createOutput<PJ301MPort>(Vec(7 + y*27, 345), module, Dice::GATE_OUTPUT + y));
+	addParam(ParamWidget::create<Trimpot>(Vec(10 + y*27, 265), module, Dice::CHANNEL_STEPS_PARAM + y, 1.0, 8.0, 8.0));
+	addParam(ParamWidget::create<Trimpot>(Vec(10 + y*27, 290), module, Dice::CHANNEL_MODE_PARAM + y, 0, 5, 0));
+	addInput(Port::create<PJ301MPort>(Vec(7+y*27, 310), Port::INPUT, module, Dice::CHANNEL_CLOCK_INPUT + y));
+	addOutput(Port::create<PJ301MPort>(Vec(7 + y*27, 345), Port::OUTPUT, module, Dice::GATE_OUTPUT + y));
     }
 }
+
+Model *modelDice = Model::create<Dice, DiceWidget>("Aepelzens Modules", "Dice", "Probability Sequencer", SEQUENCER_TAG);
