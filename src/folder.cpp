@@ -221,7 +221,7 @@ Menu *FolderWidget::createContextMenu() {
 	assert(folder);
 
 	menu->addChild(construct<MenuEntry>());
-	menu->addChild(construct<FolderMenuItem>(&MenuEntry::text, "Alternative Folding Algorithm", &FolderMenuItem::module, folder));
+	menu->addChild(construct<FolderMenuItem>(&FolderMenuItem::text, "Alternative Folding Algorithm", &FolderMenuItem::module, folder));
 
 	return menu;
 }

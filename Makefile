@@ -1,8 +1,7 @@
 SLUG = "Aepelzens Modules"
 VERSION = 0.6.0dev
 
-# FLAGS += -D v040
-FLAGS += -D v_050_dev
+#FLAGS += -D v_050_dev
 
 LDFLAGS += -lsamplerate
 
