@@ -15,5 +15,5 @@ void init(rack::Plugin *p) {
 	p->addModel(modelFolder);
 	p->addModel(modelWalker);
 	p->addModel(modelErwin);
-	//p->addModel(modeldTime);
+	p->addModel(modelWerner);
 }

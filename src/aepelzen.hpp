@@ -4,10 +4,6 @@ using namespace rack;
 
 extern Plugin *plugin;
 
-// struct dTimeWidget : ModuleWidget {
-// 	dTimeWidget();
-// };
-
 struct Knob29 : RoundKnob {
 	Knob29() {
 		setSVG(SVG::load(assetPlugin(plugin, "res/knob_29px.svg")));
@@ -22,4 +18,4 @@ extern Model *modelBurst;
 extern Model *modelFolder;
 extern Model *modelWalker;
 extern Model *modelErwin;
-extern Model *modeldTime;
+extern Model *modelWerner;
