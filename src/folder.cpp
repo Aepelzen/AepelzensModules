@@ -3,7 +3,7 @@
 #include <samplerate.h>
 
 #define BUF_LEN 32
-#define UPSAMPLE_RATIO 8
+#define UPSAMPLE_RATIO 4
 
 struct Folder : Module
 {
@@ -88,7 +88,7 @@ struct Folder : Module
 float fold(float in, float threshold) {
   float out;
   if (in>threshold || in<-threshold) {
-    out = clampf(fabs(fabs(fmod(in - threshold, threshold*4)) - threshold*2) - threshold, -5.0,5.0);
+    out = clamp(fabs(fabs(fmod(in - threshold, threshold*4)) - threshold*2) - threshold, -5.0f,5.0f);
   }
   else {
     out = in;
@@ -113,16 +113,9 @@ float fold3(float in, float t) {
 
 void Folder::step()
 {
-  gain = clampf(params[GAIN_PARAM].value + (inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value), 0.0,14.0);
-  sym = clampf(params[SYM_PARAM].value + inputs[SYM_INPUT].value/5.0 * params[SYM_ATT_PARAM].value, -1.0, 1.0);
+  gain = clamp(params[GAIN_PARAM].value + (inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value), 0.0f,14.0f);
+  sym = clamp(params[SYM_PARAM].value + inputs[SYM_INPUT].value/5.0 * params[SYM_ATT_PARAM].value, -1.0f, 1.0f);
   in = (inputs[GATE_INPUT].value/5.0 + sym) * gain;
-
-  // out = in;
-  // int stages = (int)(params[STAGE_PARAM].value)*2;
-  // for (int i=0;i<stages;i++) {
-  //   out = fold3(out, threshold);
-  // }
-  // out = tanh(out);
 
   if(++frame >= BUF_LEN) {
     //upsampling
