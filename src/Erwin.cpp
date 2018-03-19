@@ -25,20 +25,37 @@ struct Erwin : Module {
     NUM_LIGHTS = NOTE_LIGHT + 12
   };
 
+  enum QModes {
+      DOWN,
+      UP,
+      NEAREST
+  };
+
   Erwin() : Module( NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) { reset(); };
   void step() override;
   json_t* toJson() override;
   void fromJson(json_t *rootJ) override;
 
   //float ratios[13] = {1.0, 16.0/15, 9.0/8, 6.0/5, 5.0/4, 4.0/3, 7.0/5, 3.0/2, 8.0/5, 5.0/3, 16.0/9, 15.0/8, 2.0};
-
+  int mode = 0;
   bool noteState[12] = {};
-  int octave;
+  int octave = 0;
   int transposeOctave = 0;
   int transposeSemi = 0;
-  float freq;
+  float freq = 0.0f;
 
   SchmittTrigger noteTriggers[12];
+
+  /* the original modulo does not deal with negative numbers correctly
+   For example -1%12 should be 11, but it is -1*/
+  inline int mod(int k, int n) {
+      return ((k %= n) < 0) ? k+n : k;
+  }
+
+  /* modified version of ceil that works with negative values (example: -2.3 becomes -3) */
+  inline int ceilN(float x) {
+      return (x < 0) ? (int)floor(x) : (int)ceil(x);
+  }
 };
 
 json_t* Erwin::toJson() {
@@ -51,6 +68,9 @@ json_t* Erwin::toJson() {
     json_array_append_new(gatesJ, gateJ);
   }
   json_object_set_new(rootJ, "notes", gatesJ);
+
+  //mode
+  json_object_set_new(rootJ, "mode", json_integer(mode));
   return rootJ;
 }
 
@@ -59,7 +79,11 @@ void Erwin::fromJson(json_t *rootJ) {
   json_t *gatesJ = json_object_get(rootJ, "notes");
   for (int i = 0; i < 12; i++) {
     json_t *gateJ = json_array_get(gatesJ, i);
-    noteState[i] = !!json_boolean_value(gateJ);
+    noteState[i] = json_boolean_value(gateJ);
+  }
+  json_t *modeJ = json_object_get(rootJ, "mode");
+  if(modeJ) {
+      mode = json_integer_value(modeJ);
   }
 }
 
@@ -69,25 +93,44 @@ void Erwin::step() {
     octave = trunc(inputs[IN_INPUT+y].value);
     freq = inputs[IN_INPUT+y].value - octave;
     //limit to 4 octaves
-    transposeOctave = clampi((int)round(inputs[TRANSPOSE_INPUT].value / 3.0) + (int)round(params[CHANNEL_TRANSPOSE_PARAM + y].value),-4, 4);
+    transposeOctave = clamp((int)round(inputs[TRANSPOSE_INPUT].value / 2.5) + (int)round(params[CHANNEL_TRANSPOSE_PARAM + y].value),-4, 4);
     //limit to 1 octave
     transposeSemi = (int)round(inputs[SEMI_INPUT].value * 1.2);
 
-    int semi = (int)(round(freq * 12));
-    //find last matching note in scale
-    int lastValidIndex = 0;
-    for(int i=semi;i>=0;i--) {
-      if(noteState[i]) {
-	lastValidIndex = i;
+    //index of the quantized note
+    int index = 0;
+
+    int semiUp = ceilN(freq * 12);
+    int semiDown = (int)trunc(freq * 12);
+    uint8_t stepsUp = 0;
+    uint8_t stepsDown = 0;
+
+    while(!noteState[mod(semiUp + stepsUp,12)] && stepsUp < 12)
+	stepsUp++;
+    while(!noteState[mod(semiDown - stepsDown, 12)] && stepsDown < 12)
+	stepsDown++;
+
+    //if(y==0) printf("semi: %i, up: %i, down: %i\n", semiDown, stepsUp, stepsDown);
+
+    switch(mode) {
+    case QModes::UP:
+	index = semiUp + stepsUp;
 	break;
-      }
+    case QModes::DOWN:
+	index = semiDown - stepsDown;
+	break;
+    case QModes::NEAREST:
+	if (stepsUp < stepsDown)
+	    index = semiUp + stepsUp;
+	else
+	    index = semiDown - stepsDown;
+	break;
     }
 
-    if(transposeSemi) {
-      lastValidIndex = (lastValidIndex + transposeSemi);
-    }
+    if(transposeSemi)
+	index += transposeSemi;
 
-    outputs[OUT_OUTPUT + y].value = octave + lastValidIndex * 1/12.0 + transposeOctave;
+    outputs[OUT_OUTPUT + y].value = octave + index * 1/12.0 + transposeOctave;
   }
 
   // Note buttons
@@ -107,7 +150,8 @@ struct MuteLight : BASE {
 };
 
 struct ErwinWidget : ModuleWidget {
-	ErwinWidget(Erwin *module);
+    ErwinWidget(Erwin *module);
+    Menu* createContextMenu() override;
 };
 
 ErwinWidget::ErwinWidget(Erwin *module) : ModuleWidget(module) {
@@ -155,6 +199,32 @@ ErwinWidget::ErwinWidget(Erwin *module) : ModuleWidget(module) {
       white++;
     }
   }
+}
+
+struct ErwinMenuItem : MenuItem {
+    Erwin *module;
+    int mode_;
+    void onAction(EventAction &e) override {
+	module->mode = mode_;
+    }
+    void step() override {
+	rightText = (module->mode == mode_) ? "✔" : "";
+	MenuItem::step();
+    }
+};
+
+Menu *ErwinWidget::createContextMenu() {
+    Menu *menu = ModuleWidget::createContextMenu();
+
+    Erwin *erwin = dynamic_cast<Erwin*>(module);
+    assert(erwin);
+
+    menu->addChild(construct<MenuLabel>(&MenuLabel::text, "Mode"));
+    menu->addChild(construct<ErwinMenuItem>(&ErwinMenuItem::text, "Down", &ErwinMenuItem::module, erwin,  &ErwinMenuItem::mode_, Erwin::QModes::DOWN));
+    menu->addChild(construct<ErwinMenuItem>(&ErwinMenuItem::text, "Up", &ErwinMenuItem::module, erwin,  &ErwinMenuItem::mode_, Erwin::QModes::UP));
+    menu->addChild(construct<ErwinMenuItem>(&ErwinMenuItem::text, "Nearest", &ErwinMenuItem::module, erwin,  &ErwinMenuItem::mode_, Erwin::QModes::NEAREST));
+
+    return menu;
 }
 
 Model *modelErwin = Model::create<Erwin, ErwinWidget>("Aepelzens Modules", "Erwin", "Erwin", UTILITY_TAG);
