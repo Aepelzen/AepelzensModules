@@ -124,9 +124,9 @@ struct GateSeq : Module {
     void randomize() override {
 	for (int i=0; i<NUM_CHANNELS; i++) {
 	    for (int y=0; y<NUM_STEPS; y++) {
-		currentPattern->gates[i*NUM_CHANNELS + y] = (randomf() > 0.5);
+		currentPattern->gates[i*NUM_CHANNELS + y] = (randomUniform() > 0.5);
 	    }
-	    currentPattern->length[i] = (int)(randomf()*15) + 1;
+	    currentPattern->length[i] = (int)(randomUniform()*15) + 1;
 	}
     }
 };
@@ -174,7 +174,7 @@ void GateSeq::step() {
 	bool channelStep = false;
 
 	for (int y = 0; y < NUM_CHANNELS; y++) {
-	    float channelProb = clampf(inputs[CHANNEL_PROB_INPUT + y].value /5.0 + params[CHANNEL_PROB_PARAM + y].value, 0.0, 1.0);
+	    float channelProb = clamp(inputs[CHANNEL_PROB_INPUT + y].value /5.0 + params[CHANNEL_PROB_PARAM + y].value, 0.0f, 1.0f);
 	    //channel clock overwrite
 	    channelStep = false;
 	    if(inputs[CHANNEL_CLOCK_INPUT + y].active) {
@@ -197,7 +197,7 @@ void GateSeq::step() {
 		gatePulse[y].trigger(1e-3);
 		//only compute new random number for active steps
 		if (currentPattern->gates[y*NUM_STEPS + channel_index[y]] && channelProb < 1) {
-		    prob = randomf();
+		    prob = randomUniform();
 		}
 	    }
 
@@ -356,7 +356,7 @@ void GateSeq::processPatternSelection() {
     //pattern
     for(int i=0;i<8;i++) {
 	if(inputs[PATTERN_INPUT].active) {
-	    int in = clampi(trunc(inputs[PATTERN_INPUT].value),0 , 7);
+	    int in = clamp((int)trunc(inputs[PATTERN_INPUT].value),0 , 7);
 	    if (in != pattern && params[PATTERN_SWITCH_MODE_PARAM].value) {
 		for(int y=0;y<NUM_CHANNELS;y++) {
 		    channel_index[y] = -1;
@@ -398,7 +398,7 @@ bool GateSeq::mergePatterns(bool gate, int channel, int index, bool step) {
     bool out = false;
     mergeMode = params[MERGE_MODE_PARAM].value;
     if(step)
-	rand = randomf();
+	rand = randomUniform();
 
     switch (mergeMode) {
     case MERGE_OR: {

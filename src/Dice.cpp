@@ -72,13 +72,13 @@ void Dice::step() {
 	}
 
 	if (channelStep) {
-	    int numSteps = clampi(roundf(params[CHANNEL_STEPS_PARAM + y].value), 1, 8);
-	    int mode = clampi(roundf(params[CHANNEL_MODE_PARAM + y].value),0,5);
+	    int numSteps = clamp((int)roundf(params[CHANNEL_STEPS_PARAM + y].value), 1, 8);
+	    int mode = clamp((int)roundf(params[CHANNEL_MODE_PARAM + y].value),0,5);
 	    gatePulse[y].trigger(1e-3);
-	    randomValue = randomf();
+	    randomValue = randomUniform();
 	    
 	    if (mode == MODE_RANDOM_NEIGHBOUR) {
-		mode = (randomf() > 0.5) ? MODE_FORWARD : MODE_BACKWARD;
+		mode = (randomUniform() > 0.5) ? MODE_FORWARD : MODE_BACKWARD;
 	    }
 
 	    switch(mode) {

@@ -3,7 +3,7 @@
 #include <math.h>
 
 #define MAX_REPS 8
-#define MAX_TIME 1
+#define MAX_TIME 1.0f
 
 struct Burst : Module
 {
@@ -102,8 +102,8 @@ void Burst::step()
   float jitter = params[JITTER_PARAM].value;
   float randomDelta = 0;
 
-  timeParam = clampf(params[TIME_PARAM].value + (params[TIME_ATT_PARAM].value * inputs[TIME_INPUT].value / 10.0 * MAX_TIME),0.0, MAX_TIME);
-  pulseParam = clampf(params[REP_PARAM].value + (inputs[REP_INPUT].value * params[REP_ATT_PARAM].value /10.0 * MAX_REPS), 0.0, MAX_REPS);
+  timeParam = clamp(params[TIME_PARAM].value + (params[TIME_ATT_PARAM].value * inputs[TIME_INPUT].value / 10.0 * MAX_TIME), 0.0f, MAX_TIME);
+  pulseParam = clamp((int)params[REP_PARAM].value + (inputs[REP_INPUT].value * params[REP_ATT_PARAM].value /10.0 * MAX_REPS), 0, MAX_REPS);
 
   //exponential scaling for timeparam
   timeParam = (exp(timeParam) - 1)/(euler - 1);
@@ -136,8 +136,8 @@ void Burst::step()
     }
 
     if(jitter > 0) {
-      randomDelta = randomf() * jitter * seconds;
-      if (randomf() > 0.5) {
+      randomDelta = randomUniform() * jitter * seconds;
+      if (randomUniform() > 0.5) {
 	seconds = seconds + randomDelta;
       }
       else {
@@ -150,7 +150,7 @@ void Burst::step()
     }
     gateOutLength = (params[GATE_MODE_PARAM].value) ? 0.01 : seconds/2;
     outPulse.trigger(gateOutLength);
-    randomcv = randomf();
+    randomcv = randomUniform();
 
     //cv
     float cvDelta = 5.0/pulses;
@@ -229,12 +229,12 @@ BurstWidget::BurstWidget(Burst *module) : ModuleWidget(module)
   //note: SmallKnob size = 28px, Trimpot = 17 px
   //addParam(ParamWidget::create<LEDBezel>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
   addParam(ParamWidget::create<CKD6>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
-  //addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(35, 50), module, Burst::REP_PARAM, 1, 8, 4));
+  //addParam(ParamWidget::create<RoundBlackKnob>(Vec(35, 50), module, Burst::REP_PARAM, 1, 8, 4));
   addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(18, 30), module, Burst::REP_PARAM, 0, 8, 4));
-  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(10, 150), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
-  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(52, 150), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
-  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(10, 195), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
-  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 6, 0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 150), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(52, 150), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 195), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 6, 0));
 
   addParam(ParamWidget::create<Trimpot>(Vec(15.5, 240), module, Burst::REP_ATT_PARAM, -1.0, 1.0, 0.0));
   addParam(ParamWidget::create<Trimpot>(Vec(54, 240), module, Burst::TIME_ATT_PARAM, -1.0, 1.0, 0.0));

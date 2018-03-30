@@ -11,6 +11,13 @@ struct Knob29 : RoundKnob {
 	}
 };
 
+struct SnapTrimpot : Trimpot {
+    SnapTrimpot() {
+	snap = true;
+	smooth = false;
+    }
+};
+
 extern Model *modelQuadSeq;
 extern Model *modelGateSeq;
 extern Model *modelDice;

@@ -30,7 +30,7 @@ A four channel sequencer (The knobs are made by bogaudio). Like GateSeq each cha
 * Random Neighbour
 * Random
 
-## New Module: Dice
+## Dice
 
 Another sequencer. This one is built around probabilities and comes with all the usual goodies (per
 channel clock, length and playback modes). All unconnected clock inputs are normalised to the first

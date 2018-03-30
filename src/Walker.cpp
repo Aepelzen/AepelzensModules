@@ -45,24 +45,24 @@ struct Walker : Module
 
 void Walker::step()
 {
-  stepsize = clampf(params[STEP_PARAM].value + inputs[STEP_INPUT].value/5.0 * params[STEP_ATT_PARAM].value, 0.0, 1.0);
-  range = clampf(params[RANGE_PARAM].value + inputs[RANGE_INPUT].value * params[RANGE_ATT_PARAM].value, 0.0, 5.0);
+  stepsize = clamp(params[STEP_PARAM].value + inputs[STEP_INPUT].value/5.0 * params[STEP_ATT_PARAM].value, 0.0f, 1.0f);
+  range = clamp(params[RANGE_PARAM].value + inputs[RANGE_INPUT].value * params[RANGE_ATT_PARAM].value, 0.0f, 5.0f);
   mode = (int)params[RANGE_MODE_PARAM].value;
   
   if( clockTrigger.process(inputs[CLOCK_INPUT].value) ) {
-    float rand = randomf();
+    float rand = randomUniform();
     cvout += (rand > 0.5 - params[SYM_PARAM].value / 2.0) ? + stepsize : -stepsize;
     if(cvout > range || cvout < -range) {
       switch (mode) {
       case 1:
-	cvout = clampf(cvout, -range, range);
+	cvout = clamp(cvout, -range, range);
 	break;
       case 2:
 	cvout = 0;
 	break;
       case 3:
-	cvout = randomf() * range/2;
-	if (randomf() < 0.5 - params[SYM_PARAM].value / 2.0)
+	cvout = randomUniform() * range/2;
+	if (randomUniform() < 0.5 - params[SYM_PARAM].value / 2.0)
 	  cvout = -cvout;
 	break;
       }
@@ -87,12 +87,12 @@ WalkerWidget::WalkerWidget(Walker *module) : ModuleWidget(module)
   panel->setBackground(SVG::load(assetPlugin(plugin, "res/Walker.svg")));
   addChild(panel);
 
-  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 40), module, Walker::STEP_PARAM, 0.0, 1.0, 0.1));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(16, 38), module, Walker::STEP_PARAM, 0.0, 1.0, 0.1));
   addParam(ParamWidget::create<Trimpot>(Vec(21.5, 80), module, Walker::STEP_ATT_PARAM, -1.0, 1.0, 0));
-  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 110), module, Walker::RANGE_PARAM, 0, 5.0, 2.0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(16, 108), module, Walker::RANGE_PARAM, 0, 5.0, 2.0));
   addParam(ParamWidget::create<Trimpot>(Vec(21.5, 150), module, Walker::RANGE_ATT_PARAM, -1.0, 1.0, 0.0));
   addParam(ParamWidget::create<BefacoSwitch>(Vec(16, 172.5), module, Walker::RANGE_MODE_PARAM, 1, 3, 1));
-  addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(16, 210), module, Walker::SYM_PARAM, -1.0, 1.0, 0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(16, 210), module, Walker::SYM_PARAM, -1.0, 1.0, 0));
 
   addInput(Port::create<PJ301MPort>(Vec(3, 320), Port::INPUT, module, Walker::CLOCK_INPUT));;
   addInput(Port::create<PJ301MPort>(Vec(3, 276), Port::INPUT, module, Walker::STEP_INPUT));;
