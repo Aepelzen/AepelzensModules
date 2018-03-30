@@ -99,6 +99,8 @@ void Erwin::step() {
 
   //Scale selection
   int scaleOffset = clamp((int)(params[SELECT_PARAM].value + inputs[SELECT_INPUT].value * NUM_SCALES /10),0,15) * 12;
+  bool* currentScale = &noteState[0] + scaleOffset * sizeof(bool);
+
   //limit to 1 octave
   transposeSemi = (int)round(inputs[SEMI_INPUT].value * 1.2);
 
@@ -120,9 +122,9 @@ void Erwin::step() {
     uint8_t stepsUp = 0;
     uint8_t stepsDown = 0;
 
-    while(!noteState[mod(semiUp + stepsUp,12) + scaleOffset] && stepsUp < 12)
+    while(!currentScale[mod(semiUp + stepsUp,12)] && stepsUp < 12)
 	stepsUp++;
-    while(!noteState[mod(semiDown - stepsDown, 12) + scaleOffset] && stepsDown < 12)
+    while(!currentScale[mod(semiDown - stepsDown, 12)] && stepsDown < 12)
 	stepsDown++;
 
     //Reset for empty scales to avoid transposing by 1 octave
@@ -155,9 +157,9 @@ void Erwin::step() {
   // Note buttons
   for (int i = 0; i < 12; i++) {
     if (noteTriggers[i].process(params[NOTE_PARAM + i].value)) {
-      noteState[i + scaleOffset] = !noteState[i + scaleOffset];
+      currentScale[i] = !currentScale[i];
     }
-    lights[NOTE_LIGHT + i].value = (noteState[i + scaleOffset] >= 1.0) ? 0.7 : 0;
+    lights[NOTE_LIGHT + i].value = (currentScale[i] >= 1.0) ? 0.7 : 0;
   }
 }
 
