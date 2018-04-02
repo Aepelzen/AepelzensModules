@@ -18,6 +18,13 @@ struct SnapTrimpot : Trimpot {
     }
 };
 
+template <typename BASE>
+struct BigLight : BASE {
+	BigLight() {
+	    this->box.size = Vec(17, 17);
+	}
+};
+
 extern Model *modelQuadSeq;
 extern Model *modelGateSeq;
 extern Model *modelDice;

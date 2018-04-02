@@ -252,13 +252,6 @@ void GateSeq::step() {
     outputs[CLOCK_OUTPUT].value = clockOutPulse.process(1.0/engineGetSampleRate()) ? 10.0 : 0.0;
 }
 
-template <typename BASE>
-struct BigLight : BASE {
-	BigLight() {
-	    this->box.size = Vec(17, 17);
-	}
-};
-
 struct GateSeqWidget : ModuleWidget {
 	GateSeqWidget(GateSeq *module);
 };
