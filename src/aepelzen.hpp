@@ -4,6 +4,17 @@ using namespace rack;
 
 extern Plugin *plugin;
 
+/* the original modulo does not deal with negative numbers correctly
+   For example -1%12 should be 11, but it is -1*/
+inline int modN(int k, int n) {
+    return ((k %= n) < 0) ? k+n : k;
+}
+
+/* modified version of ceil that works with negative values (example: -2.3 becomes -3) */
+inline int ceilN(float x) {
+    return (x < 0) ? (int)floor(x) : (int)ceil(x);
+}
+
 struct Knob29 : RoundKnob {
 	Knob29() {
 		setSVG(SVG::load(assetPlugin(plugin, "res/knob_29px.svg")));

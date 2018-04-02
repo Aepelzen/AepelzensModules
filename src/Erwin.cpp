@@ -49,17 +49,6 @@ struct Erwin : Module {
   float freq = 0.0f;
 
   SchmittTrigger noteTriggers[12];
-
-  /* the original modulo does not deal with negative numbers correctly
-   For example -1%12 should be 11, but it is -1*/
-  inline int mod(int k, int n) {
-      return ((k %= n) < 0) ? k+n : k;
-  }
-
-  /* modified version of ceil that works with negative values (example: -2.3 becomes -3) */
-  inline int ceilN(float x) {
-      return (x < 0) ? (int)floor(x) : (int)ceil(x);
-  }
 };
 
 json_t* Erwin::toJson() {
@@ -122,9 +111,9 @@ void Erwin::step() {
     uint8_t stepsUp = 0;
     uint8_t stepsDown = 0;
 
-    while(!currentScale[mod(semiUp + stepsUp,12)] && stepsUp < 12)
+    while(!currentScale[modN(semiUp + stepsUp,12)] && stepsUp < 12)
 	stepsUp++;
-    while(!currentScale[mod(semiDown - stepsDown, 12)] && stepsDown < 12)
+    while(!currentScale[modN(semiDown - stepsDown, 12)] && stepsDown < 12)
 	stepsDown++;
 
     //Reset for empty scales to avoid transposing by 1 octave
