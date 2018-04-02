@@ -18,7 +18,7 @@ struct Burst : Module
       GATE_MODE_PARAM,
       REP_ATT_PARAM,
       TIME_ATT_PARAM,
-      NUM_PARAMS = TIME_ATT_PARAM
+      NUM_PARAMS
     };
   enum InputIds
     {
@@ -26,14 +26,14 @@ struct Burst : Module
       CLOCK_INPUT,
       REP_INPUT,
       TIME_INPUT,
-      NUM_INPUTS = TIME_INPUT
+      NUM_INPUTS
     };
   enum OutputIds
     {
       GATE_OUTPUT,
       EOC_OUTPUT,
       CV_OUTPUT,
-      NUM_OUTPUTS = CV_OUTPUT
+      NUM_OUTPUTS
     };
 
   enum LightIds
@@ -49,6 +49,7 @@ struct Burst : Module
       CV_MODE4,
       CV_MODE_RANDOMP,
       CV_MODE_RANDOMN,
+      CV_MODE_RANDOM_WALK,
       CV_MODE_RANDOM,
     };
 
@@ -60,7 +61,6 @@ struct Burst : Module
   float seconds = 0;
   int pulseCount = 0;
   int pulses = 4;
-  float delta = 0;
   float randomcv = 0;
   float cvOut = 0;
 
@@ -78,23 +78,12 @@ struct Burst : Module
 
   void step() override;
 
-  Burst() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
-    reset();
-  }
-
-  void reset() override
-  {
-    onSampleRateChange();
-  }
-
-  void onSampleRateChange() override {delta = 1.0/engineGetSampleRate();}
-
-  void randomize() override {}
+  Burst() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) { }
 };
 
 void Burst::step()
 {
-  //ModuleWidget::step();
+  float delta = engineGetSampleTime();
   float schmittValue = gateTrigger.process(inputs[GATE_INPUT].value);
 
   //seconds = params[TIME_PARAM].value + (inputs[TIME_INPUT].value / 20.0);
@@ -180,6 +169,9 @@ void Burst::step()
     case CV_MODE_RANDOMN:
       cvOut = randomcv * (-5.0);
       break;
+    case CV_MODE_RANDOM_WALK:
+	cvOut = (randomcv > 0.5f) ? cvOut + cvDelta : cvOut - cvDelta;
+	break;
     case CV_MODE_RANDOM:
       cvOut = randomcv *10 - 5;
       break;
@@ -189,11 +181,9 @@ void Burst::step()
   if (schmittValue || m_buttonTrigger.process(params[BUTTON_PARAM].value)) {
     pulseCount = 0;
     timer = 0.0;
-    //outPulse.trigger(0.01);
     outPulse.trigger(gateOutLength);
     seconds = timeParam;
     pulses = pulseParam;
-    //outputs[CV_OUTPUT].value = 0;
     cvOut = 0;
   }
 
@@ -206,20 +196,19 @@ void Burst::step()
 
 struct BurstWidget : ModuleWidget
 {
-	SVGPanel *panel;
-	BurstWidget(Burst *module);
-  //void step() override;
+  BurstWidget(Burst *module);
 };
 
 BurstWidget::BurstWidget(Burst *module) : ModuleWidget(module)
 {
-  //box.size = Vec(6 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT);
-  box.size = Vec(6 * 15, RACK_GRID_HEIGHT);
+  box.size = Vec(6 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT);
 
-  panel = new SVGPanel();
-  panel->box.size = box.size;
-  panel->setBackground(SVG::load(assetPlugin(plugin, "res/Burst.svg")));
-  addChild(panel);
+  {
+    SVGPanel* panel = new SVGPanel();
+    panel->box.size = box.size;
+    panel->setBackground(SVG::load(assetPlugin(plugin, "res/Burst.svg")));
+    addChild(panel);
+  }
 
   // addChild(Widget::create<ScrewSilver>(Vec(15, 0)));
   // addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 30, 0)));
@@ -227,14 +216,12 @@ BurstWidget::BurstWidget(Burst *module) : ModuleWidget(module)
   // addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 30, 365)));
 
   //note: SmallKnob size = 28px, Trimpot = 17 px
-  //addParam(ParamWidget::create<LEDBezel>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
   addParam(ParamWidget::create<CKD6>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
-  //addParam(ParamWidget::create<RoundBlackKnob>(Vec(35, 50), module, Burst::REP_PARAM, 1, 8, 4));
   addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(18, 30), module, Burst::REP_PARAM, 0, 8, 4));
   addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 150), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
   addParam(ParamWidget::create<RoundBlackKnob>(Vec(52, 150), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
   addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 195), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
-  addParam(ParamWidget::create<RoundBlackKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 6, 0));
+  addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 7, 0));
 
   addParam(ParamWidget::create<Trimpot>(Vec(15.5, 240), module, Burst::REP_ATT_PARAM, -1.0, 1.0, 0.0));
   addParam(ParamWidget::create<Trimpot>(Vec(54, 240), module, Burst::TIME_ATT_PARAM, -1.0, 1.0, 0.0));
