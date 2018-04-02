@@ -218,13 +218,13 @@ BurstWidget::BurstWidget(Burst *module) : ModuleWidget(module)
   //note: SmallKnob size = 28px, Trimpot = 17 px
   addParam(ParamWidget::create<CKD6>(Vec(30, 105), module, Burst::BUTTON_PARAM, 0.0, 1.0, 0.0));
   addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(18, 30), module, Burst::REP_PARAM, 0, 8, 4));
-  addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 150), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
-  addParam(ParamWidget::create<RoundBlackKnob>(Vec(52, 150), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
-  addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 195), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
-  addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(52, 195), module, Burst::CV_MODE_PARAM, 0, 7, 0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 138), module, Burst::TIME_PARAM, 0.02, 1, 0.5));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(50, 138), module, Burst::ACCEL_PARAM, 1.0, 2.0, 1.0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 186), module, Burst::JITTER_PARAM, 0.0, 1.0, 0.0));
+  addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(50, 186), module, Burst::CV_MODE_PARAM, 0, 7, 0));
 
-  addParam(ParamWidget::create<Trimpot>(Vec(15.5, 240), module, Burst::REP_ATT_PARAM, -1.0, 1.0, 0.0));
-  addParam(ParamWidget::create<Trimpot>(Vec(54, 240), module, Burst::TIME_ATT_PARAM, -1.0, 1.0, 0.0));
+  addParam(ParamWidget::create<Trimpot>(Vec(15.5, 233), module, Burst::REP_ATT_PARAM, -1.0, 1.0, 0.0));
+  addParam(ParamWidget::create<Trimpot>(Vec(54, 233), module, Burst::TIME_ATT_PARAM, -1.0, 1.0, 0.0));
   addInput(Port::create<PJ301MPort>(Vec(13, 265), Port::INPUT, module, Burst::REP_INPUT));;
   addInput(Port::create<PJ301MPort>(Vec(50, 265), Port::INPUT, module, Burst::TIME_INPUT));;
 
@@ -237,4 +237,4 @@ BurstWidget::BurstWidget(Burst *module) : ModuleWidget(module)
   addOutput(Port::create<PJ301MPort>(Vec(60,335), Port::OUTPUT, module, Burst::GATE_OUTPUT));
 }
 
-Model *modelBurst = Model::create<Burst, BurstWidget>("Aepelzens Modules", "burst", "Burst Generator", SEQUENCER_TAG);
+Model *modelBurst = Model::create<Burst, BurstWidget>("Aepelzens Modules", "burst", "Burst Generator", CLOCK_MODULATOR_TAG, CLOCK_TAG, RANDOM_TAG);
