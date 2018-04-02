@@ -15,7 +15,8 @@ struct QuadSeq : Module {
     ROW2_PARAM = ROW1_PARAM + 8,
     ROW3_PARAM = ROW2_PARAM + 8,
     ROW4_PARAM = ROW3_PARAM + 8,
-    STEP_SELECT_PARAM = ROW4_PARAM + 8,
+    CHANNEL_PROB_PARAM = ROW4_PARAM + 8,
+    STEP_SELECT_PARAM = CHANNEL_PROB_PARAM + NUM_CHANNELS,
     NUM_PARAMS = STEP_SELECT_PARAM + 8
   };
   enum InputIds {
@@ -59,14 +60,6 @@ struct QuadSeq : Module {
 
   float resetLight = 0.0;
   float stepLights[NUM_CHANNELS][8] = {};
-
-  enum GateMode {
-    TRIGGER,
-    RETRIGGER,
-    CONTINUOUS,
-  };
-  GateMode gateMode = TRIGGER;
-  PulseGenerator gatePulse;
 
   int channel_index[NUM_CHANNELS] = {};
   float rowValue[NUM_CHANNELS] = {};
@@ -172,41 +165,56 @@ void QuadSeq::step() {
     if (channelStep) {
       int numSteps = (int) params[CHANNEL_STEPS_PARAM + y].value;
       int mode = (int)params[CHANNEL_MODE_PARAM + y].value;
+      float prob = params[CHANNEL_PROB_PARAM + y].value * 2.0f;
+      int stepsize = 1;
 
       if (mode == MODE_RANDOM_NEIGHBOUR) {
 	  mode = (randomUniform() > 0.5) ? MODE_FORWARD : MODE_BACKWARD;
       }
 
-      switch(mode) {
-      case MODE_FORWARD:
-	channel_index[y] += 1;
-	channel_index[y] = (channel_index[y] >= numSteps) ? 0 : channel_index[y];
-	break;
-      case MODE_BACKWARD:
-	channel_index[y] -= 1;
-	channel_index[y] = (channel_index[y] < 0) ? numSteps - 1 : channel_index[y];
-	break;
-      case MODE_ALTERNATING:
-	if (direction[y]) {
-	  channel_index[y] += 1;
-	  if (channel_index[y] >= numSteps) {
-	    channel_index[y] = numSteps - 2;
-	    direction[y] = !direction[y];
-	  }
-	}
-	else {
-	  channel_index[y] -= 1;
-	  if (channel_index[y] <= 0) {
-	    channel_index[y] = 0;
-	    direction[y] = !direction[y];
-	  }
-	}
-	break;
-      case MODE_RANDOM:
-	//channel_index[y] = round(randomUniform() * (numSteps - 1));
-	channel_index[y] = rand() % numSteps;
-	break;
+      //values smaller than zero repeat a step, greater than zero skip
+      if(prob < 1.0f) {
+	  stepsize = (randomUniform() > prob) ? 0 : 1;
       }
+      else if (prob > 1.0f) {
+	  stepsize = (randomUniform() < (prob - 1.0f)) ? 2 : 1;
+      }
+
+      if(numSteps > 1) {
+	  switch(mode) {
+	  case MODE_FORWARD:
+	      channel_index[y] += stepsize;
+	      channel_index[y] %= numSteps;
+	      break;
+	  case MODE_BACKWARD:
+	      channel_index[y] -= stepsize;
+	      channel_index[y] = modN(channel_index[y], numSteps);
+	      break;
+	  case MODE_ALTERNATING:
+	      if (direction[y]) {
+		  channel_index[y] += stepsize;
+		  if (channel_index[y] >= numSteps - 1) {
+		      //the second part is zero when we end right at the last step or 1 when we moved past it because of skipping
+		      //use that to correct for position for skipping
+		      channel_index[y] = numSteps - 1 - (channel_index[y] % (numSteps - 1));
+		      direction[y] = !direction[y];
+		  }
+	      }
+	      else {
+		  channel_index[y] -= stepsize;
+		  if (channel_index[y] <= 0) {
+		      channel_index[y] = -1 * channel_index[y];
+		      direction[y] = !direction[y];
+		  }
+	      }
+	      break;
+	  case MODE_RANDOM:
+	      channel_index[y] = rand() % numSteps;
+	      break;
+	  }
+      }
+      else
+	  channel_index[y] = 0;
 
       stepLights[y][channel_index[y]] = 1.0;
     }
@@ -214,6 +222,7 @@ void QuadSeq::step() {
     // Outputs
     rowValue[y] = (params[ROW1_PARAM + channel_index[y] + y * 8].value) * params[CHANNEL_RANGE_PARAM + y].value;
     outputs[ROW1_OUTPUT + y].value = (running || manualStepSelect) ? outputs[ROW1_OUTPUT + y].value = rowValue[y] : 0.0f;
+
     // steplights
     for (int i = 0; i < 8; i++) {
       //stepLights[y][i] -= stepLights[y][i] / lightLambda / engineGetSampleRate();
@@ -224,7 +233,6 @@ void QuadSeq::step() {
   resetLight -= resetLight / lightLambda / engineGetSampleRate();
   lights[RESET_LIGHT].value = resetLight;
 }
-
 
 struct QuadSeqWidget : ModuleWidget {
 	QuadSeqWidget(QuadSeq *module);
@@ -258,9 +266,11 @@ QuadSeqWidget::QuadSeqWidget(QuadSeq *module) : ModuleWidget(module) {
   addInput(Port::create<PJ301MPort>(Vec(50, 101), Port::INPUT, module, QuadSeq::RESET_INPUT));
 
   for (int i=0;i<NUM_CHANNELS;i++) {
-    addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(105 + i*55, 35.5), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0, 8.0, 8.0));
-    addParam(ParamWidget::create<Trimpot>(Vec(98 + i*55, 85), module, QuadSeq::CHANNEL_RANGE_PARAM + i, 0.0, 1.0, 1.0));
-    addParam(ParamWidget::create<SnapTrimpot>(Vec(120 + i*55, 85), module, QuadSeq::CHANNEL_MODE_PARAM + i, 0, 4, 0));
+    addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(105 + i*55, 30), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0f, 8.0f, 8.0f));
+    addParam(ParamWidget::create<Trimpot>(Vec(123 + i*55, 75), module, QuadSeq::CHANNEL_RANGE_PARAM + i, 0.0f, 1.0f, 0.5f));
+    addParam(ParamWidget::create<Trimpot>(Vec(98 + i*55, 91), module, QuadSeq::CHANNEL_PROB_PARAM + i, 0.0f, 1.0f, 0.5f));
+    addParam(ParamWidget::create<SnapTrimpot>(Vec(123 + i*55, 108), module, QuadSeq::CHANNEL_MODE_PARAM + i, 0.0f, 4.0f, 0.0f));
+
     addInput(Port::create<PJ301MPort>(Vec(18 + i*38, 350), Port::INPUT, module, QuadSeq::CHANNEL_CLOCK_INPUT + i));
     addOutput(Port::create<PJ301MPort>(Vec(172 + i*38, 350), Port::OUTPUT, module, QuadSeq::ROW1_OUTPUT + i));
     for (int y = 0; y < 8; y++) {

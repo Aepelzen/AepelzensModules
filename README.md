@@ -30,6 +30,11 @@ A four channel sequencer (The knobs are made by bogaudio). Like GateSeq each cha
 * Random Neighbour
 * Random
 
+Update: There is a new probability control with 2 modes. At noon it does nothing and everything works as usual. Turning it ccw increases the probability that the current step is repeated. Fully ccw the sequence is stuck at the current step. Turning the knob clockwise increases the probability that the next step is skiped.
+I also added buttons for manual step selection. This is mostly useful for programming sequences and to make it easier to dial in accurate values.
+
+Finally, i changed the output behaviour. The sequencer now only outputs a signal when it's either running or you hit a manual step select button.
+
 ## Dice
 
 Another sequencer. This one is built around probabilities and comes with all the usual goodies (per
