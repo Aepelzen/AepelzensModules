@@ -1,5 +1,6 @@
 #include "aepelzen.hpp"
 #include "dsp/digital.hpp"
+#include "osdialog.h"
 #include <math.h>
 
 #define NUM_CHANNELS 4
@@ -70,7 +71,13 @@ json_t* Erwin::toJson() {
 void Erwin::fromJson(json_t *rootJ) {
   // Note values
   json_t *gatesJ = json_object_get(rootJ, "notes");
-  for (int i = 0; i < 12 * NUM_SCALES; i++) {
+
+  if(!gatesJ) {
+      debug("Erwin: Invalid Input file");
+      return;
+  }
+
+  for (unsigned int i = 0; i < json_array_size(gatesJ); i++) {
     json_t *gateJ = json_array_get(gatesJ, i);
     noteState[i] = gateJ ? json_boolean_value(gateJ) : false;
   }
@@ -217,6 +224,50 @@ struct ErwinMenuItem : MenuItem {
     }
 };
 
+/* Export scales */
+struct ErwinSaveItem : MenuItem {
+    Erwin *module;
+
+    void onAction(EventAction &e) override {
+	json_t* rootJ = module->toJson();
+	if(rootJ) {
+	    char* path = osdialog_file(OSDIALOG_SAVE, NULL, "Erwin.json", NULL);
+	    if(path) {
+		if (json_dump_file(rootJ, path, 0))
+		    debug("Error: Can not export Erwin Scale file");
+	    }
+	}
+    }
+};
+
+/* Import scales */
+struct ErwinLoadItem : MenuItem {
+    Erwin *module;
+    json_error_t error;
+
+    void onAction(EventAction &e) override {
+	char* path = osdialog_file(OSDIALOG_OPEN, NULL, NULL, NULL);
+	if(path) {
+	    json_t* rootJ = json_load_file(path, 0, &error);
+	    if(rootJ) {
+		//Check this here to not break compatibility with old (single scale) saves
+		json_t *gatesJ = json_object_get(rootJ, "notes");
+		if(!gatesJ || json_array_size(gatesJ) != 12 * NUM_SCALES) {
+		    osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, "Erwin: Invalid Input file");
+		    return;
+		}
+		module->fromJson(rootJ);
+	    }
+	    else {
+		osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, "Can't load file. See Logfile for details");
+		debug("Error: Can't import file %s", path);
+		debug("Text: %s", error.text);
+		debug("Source: %s", error.source);
+	    }
+	}
+    }
+};
+
 Menu *ErwinWidget::createContextMenu() {
     Menu *menu = ModuleWidget::createContextMenu();
 
@@ -227,6 +278,10 @@ Menu *ErwinWidget::createContextMenu() {
     menu->addChild(construct<ErwinMenuItem>(&ErwinMenuItem::text, "Down", &ErwinMenuItem::module, erwin,  &ErwinMenuItem::mode_, Erwin::QModes::DOWN));
     menu->addChild(construct<ErwinMenuItem>(&ErwinMenuItem::text, "Up", &ErwinMenuItem::module, erwin,  &ErwinMenuItem::mode_, Erwin::QModes::UP));
     menu->addChild(construct<ErwinMenuItem>(&ErwinMenuItem::text, "Nearest", &ErwinMenuItem::module, erwin,  &ErwinMenuItem::mode_, Erwin::QModes::NEAREST));
+
+    menu->addChild(construct<MenuLabel>(&MenuLabel::text, "Import/Export"));
+    menu->addChild(construct<ErwinLoadItem>(&ErwinLoadItem::text, "Load Scales", &ErwinLoadItem::module, erwin));
+    menu->addChild(construct<ErwinSaveItem>(&ErwinSaveItem::text, "Save Scales", &ErwinSaveItem::module, erwin));
 
     return menu;
 }
