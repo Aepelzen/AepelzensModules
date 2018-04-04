@@ -120,8 +120,6 @@ void Erwin::step() {
     stepsUp %= 12;
     stepsDown %= 12;
 
-    //if(y==0) printf("semi: %i, up: %i, down: %i\n", semiDown, stepsUp, stepsDown);
-
     switch(mode) {
     case QModes::UP:
 	index = semiUp + stepsUp;
@@ -151,13 +149,6 @@ void Erwin::step() {
     lights[NOTE_LIGHT + i].value = (currentScale[i] >= 1.0) ? 0.7 : 0;
   }
 }
-
-template <typename BASE>
-struct MuteLight : BASE {
-	MuteLight() {
-	  this->box.size = mm2px(Vec(6.0, 6.0));
-	}
-};
 
 struct ErwinWidget : ModuleWidget {
     ErwinWidget(Erwin *module);
@@ -201,14 +192,14 @@ ErwinWidget::ErwinWidget(Erwin *module) : ModuleWidget(module) {
   for(int i=0; i<12; i++) {
     if (i == 1 || i == 3 || i == 6 || i == 8 || i == 10 ) {
       addParam(ParamWidget::create<LEDBezel>(Vec(10,321.5 - black*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
-      addChild(ModuleLightWidget::create<MuteLight<GreenLight>>(Vec(12, 323.5 - black*30), module, Erwin::NOTE_LIGHT+i));
+      addChild(ModuleLightWidget::create<BigLight<GreenLight>>(Vec(12.5, 324 - black*30), module, Erwin::NOTE_LIGHT+i));
       black++;
     }
     else {
       if(i == 4)
 	black++;
       addParam(ParamWidget::create<LEDBezel>(Vec(35,336.5 - white*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
-      addChild(ModuleLightWidget::create<MuteLight<GreenLight>>(Vec(37, 338.5 - white*30), module, Erwin::NOTE_LIGHT+i));
+      addChild(ModuleLightWidget::create<BigLight<GreenLight>>(Vec(37.5, 339 - white*30), module, Erwin::NOTE_LIGHT+i));
       white++;
     }
   }
