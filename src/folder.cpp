@@ -147,10 +147,9 @@ FolderWidget::FolderWidget(Folder *module) : ModuleWidget(module) {
     addChild(panel);
 
     //note: SmallKnob size = 28px, Trimpot = 17 px
-    addParam(ParamWidget::create<BefacoSwitch>(Vec(16, 50), module, Folder::STAGE_PARAM, 1, 3, 2));
-    //addParam(ParamWidget::create<CKSSThreeH>(Vec(16, 50), module, Folder::STAGE_PARAM, 1, 3, 2));
-    addParam(ParamWidget::create<RoundBlackKnob>(Vec(16, 100), module, Folder::GAIN_PARAM, 0.0, 14.0, 1.0));
-    addParam(ParamWidget::create<Trimpot>(Vec(21.5, 145), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
+    addParam(ParamWidget::create<CKSSThreeH>(Vec(11, 65), module, Folder::STAGE_PARAM, 1, 3, 2));
+    addParam(ParamWidget::create<RoundBlackKnob>(Vec(16, 105), module, Folder::GAIN_PARAM, 0.0, 14.0, 1.0));
+    addParam(ParamWidget::create<Trimpot>(Vec(21.5, 150), module, Folder::GAIN_ATT_PARAM, -1.0, 1.0, 0));
     addParam(ParamWidget::create<RoundBlackKnob>(Vec(16, 185), module, Folder::SYM_PARAM, -1.0, 1.0, 0.0));
     addParam(ParamWidget::create<Trimpot>(Vec(21.5, 230), module, Folder::SYM_ATT_PARAM, -1.0, 1.0, 0.0));
 

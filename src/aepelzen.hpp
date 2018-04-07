@@ -22,6 +22,14 @@ struct Knob29 : RoundKnob {
 	}
 };
 
+struct CKSSThreeH : SVGSwitch, ToggleSwitch {
+	CKSSThreeH() {
+	    addFrame(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/CKSSThreeH_0.svg")));
+	    addFrame(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/CKSSThreeH_1.svg")));
+	    addFrame(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/CKSSThreeH_2.svg")));
+	}
+};
+
 struct SnapTrimpot : Trimpot {
     SnapTrimpot() {
 	snap = true;
