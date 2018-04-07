@@ -254,7 +254,7 @@ QuadSeqWidget::QuadSeqWidget(QuadSeq *module) : ModuleWidget(module) {
   // addChild(Widget::create<ScrewSilver>(Vec(box.size.x-20, 365)));
 
   //original 56
-  addParam(ParamWidget::create<RoundBlackKnob>(Vec(50, 18), module, QuadSeq::CLOCK_PARAM, -2.0, 6.0, 2.0));
+  addParam(ParamWidget::create<RoundBlackKnob>(Vec(47.5, 18), module, QuadSeq::CLOCK_PARAM, -2.0, 6.0, 2.0));
 
   addParam(ParamWidget::create<LEDBezel>(Vec(11, 62), module, QuadSeq::RUN_PARAM, 0.0, 1.0, 0.0));
   addChild(ModuleLightWidget::create<BigLight<GreenLight>>(Vec(13.5, 64.5), module, QuadSeq::RUNNING_LIGHT));
@@ -266,10 +266,10 @@ QuadSeqWidget::QuadSeqWidget(QuadSeq *module) : ModuleWidget(module) {
   addInput(Port::create<PJ301MPort>(Vec(50, 101), Port::INPUT, module, QuadSeq::RESET_INPUT));
 
   for (int i=0;i<NUM_CHANNELS;i++) {
-    addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(105 + i*55, 30), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0f, 8.0f, 8.0f));
-    addParam(ParamWidget::create<Trimpot>(Vec(123 + i*55, 75), module, QuadSeq::CHANNEL_RANGE_PARAM + i, 0.0f, 1.0f, 0.5f));
-    addParam(ParamWidget::create<Trimpot>(Vec(98 + i*55, 91), module, QuadSeq::CHANNEL_PROB_PARAM + i, 0.0f, 1.0f, 0.5f));
-    addParam(ParamWidget::create<SnapTrimpot>(Vec(123 + i*55, 108), module, QuadSeq::CHANNEL_MODE_PARAM + i, 0.0f, 4.0f, 0.0f));
+    addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(109 + i*55, 28), module, QuadSeq::CHANNEL_STEPS_PARAM + i, 1.0f, 8.0f, 8.0f));
+    addParam(ParamWidget::create<Trimpot>(Vec(115 + i*55, 63), module, QuadSeq::CHANNEL_RANGE_PARAM + i, 0.0f, 1.0f, 0.5f));
+    addParam(ParamWidget::create<Trimpot>(Vec(115 + i*55, 85), module, QuadSeq::CHANNEL_PROB_PARAM + i, 0.0f, 1.0f, 0.5f));
+    addParam(ParamWidget::create<SnapTrimpot>(Vec(115 + i*55, 107), module, QuadSeq::CHANNEL_MODE_PARAM + i, 0.0f, 4.0f, 0.0f));
 
     addInput(Port::create<PJ301MPort>(Vec(18 + i*38, 350), Port::INPUT, module, QuadSeq::CHANNEL_CLOCK_INPUT + i));
     addOutput(Port::create<PJ301MPort>(Vec(172 + i*38, 350), Port::OUTPUT, module, QuadSeq::ROW1_OUTPUT + i));
