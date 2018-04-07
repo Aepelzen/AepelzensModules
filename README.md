@@ -23,7 +23,7 @@ You can create new patterns out of existing ones by merging them. The workflow i
 
 ## QuadSeq
 
-A four channel sequencer (The knobs are made by bogaudio). Like GateSeq each channel has it's own clock input (the 4 inputs on the bottom left) and length. The mode parameter sets one of the following playback modes:
+A four channel sequencer (The knobs are made by bogaudio). Like GateSeq each channel has it's own clock input (the 4 inputs on the bottom left) and length. There is also a global clock input (under the Run button). The mode parameter sets one of the following playback modes:
 * Forward
 * Backwad
 * Alternating
@@ -31,9 +31,11 @@ A four channel sequencer (The knobs are made by bogaudio). Like GateSeq each cha
 * Random
 
 Update: There is a new probability control with 2 modes. At noon it does nothing and everything works as usual. Turning it ccw increases the probability that the current step is repeated. Fully ccw the sequence is stuck at the current step. Turning the knob clockwise increases the probability that the next step is skiped.
-I also added buttons for manual step selection. This is mostly useful for programming sequences and to make it easier to dial in accurate values.
+I also added buttons for manual step selection. This is mostly useful for programming sequences (while the sequencer is stopped) and to make it easier to dial in accurate values.
 
 Finally, i changed the output behaviour. The sequencer now only outputs a signal when it's either running or you hit a manual step select button.
+
+Thanks to [AS](https://github.com/AScustomWorks/AS) for helping me cram all this into such a small panel
 
 ## Dice
 
@@ -57,13 +59,14 @@ The mode button selects the mode for the CV output, that can be used to modulate
 * Alternating2: output alternates between positive and negative values. The magnitude is increased after every pulse (so you get 0, 1, -2, 3, -4 ...)
 * Randomp: positive random values
 * Randomn: negative  random values
+* Random Walk
 * Random
 
 If you have ideas for additional CV-Modes or any other suggestions please let me know.
 
 ## Manifold
 
-A wavefolder. Works best with simple input signals like sine or triangle waves. The fold and symmetry inputs work well with CV and audio signals. The output becomes pretty noisy for high frequency modulators but produces very interesting sounds at low/mid frequency ranges. There is an alternative folding algorithm that can be switched via context menu. That one does all the folding in a single pass and therefore the stages button does nothing if this mode is selected. It also responds different to the symmetry parameter, especially with a high number of folds.
+A wavefolder. Works best with simple input signals like sine or triangle waves. The fold and symmetry inputs work well with CV and audio signals. The output becomes pretty noisy for high frequency modulators but produces very interesting sounds at low/mid frequency ranges. There is an alternative folding algorithm that can be switched via context menu. That one does all the folding in a single pass and therefore the stages switch does nothing if this mode is selected. It also responds differently to the symmetry parameter, especially with a high number of folds.
 
 Note: this module shifts the phase of the input-signal (because of the upsampling)
 
@@ -76,8 +79,6 @@ A CV generator that simulates a random walk. At every step the CV output changes
 
 ## Erwin
 
-A 4-channel scale-quantiser with user-definable scales. All inputs/outputs use the same scale, however you can transpose every channel seperately by ±4 octaves (the 4 small trimpots). You can also transpose all outputs by 4 octaves and/or 12 semitonses via CV inputs.
+A 4-channel scale-quantiser with up to 16 user-definable scales. All inputs/outputs use the same scale, however you can transpose every channel seperately by ±4 octaves (the 4 small trimpots). You can also transpose all outputs by 4 octaves and/or 12 semitonses via CV inputs.
 
-# Building
-
-The wavefolder uses libsamplerate for the upsampling. That shouldn't be a problem because Rack depends on libsamplerate anyway but you might have to install the header-files if you don't build Rack yourself.
+Scales can be loaded and saved via the right-click-menu (they are also saved with the patch). The menu also allows to change the Quantizer mode. (Down used to be the only mode in older version and is still the default for backwards compatibility)
