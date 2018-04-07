@@ -3,8 +3,6 @@ VERSION = 0.6.0dev
 
 #FLAGS += -D v_050_dev
 
-LDFLAGS += -lsamplerate
-
 SOURCES += $(wildcard src/*.cpp)
 
 DISTRIBUTABLES += $(wildcard LICENSE*) res
