@@ -271,7 +271,7 @@ GateSeqWidget::GateSeqWidget(GateSeq *module) : ModuleWidget(module) {
     addChild(Widget::create<ScrewSilver>(Vec(15, 365)));
     addChild(Widget::create<ScrewSilver>(Vec(box.size.x-30, 365)));
 
-    addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(15, 50), module, GateSeq::CLOCK_PARAM, -2.0, 10.0, 2.0));
+    addParam(ParamWidget::create<RoundBlackKnob>(Vec(15, 50), module, GateSeq::CLOCK_PARAM, -2.0, 10.0, 2.0));
     addParam(ParamWidget::create<LEDBezel>(Vec(65, 55), module, GateSeq::RUN_PARAM, 0.0, 1.0, 0.0));
     addChild(ModuleLightWidget::create<BigLight<GreenLight>>(Vec(67.5, 57.5), module, GateSeq::RUNNING_LIGHT));
     addParam(ParamWidget::create<LEDBezel>(Vec(96.5, 55), module, GateSeq::RESET_PARAM, 0.0, 1.0, 0.0));
@@ -293,7 +293,7 @@ GateSeqWidget::GateSeqWidget(GateSeq *module) : ModuleWidget(module) {
 
     addParam(ParamWidget::create<LEDBezel>(Vec(465, 55), module, GateSeq::MERGE_PARAM , 0.0, 1.0, 0.0));
     addChild(ModuleLightWidget::create<BigLight<RedLight>>(Vec(467.5, 57.5), module, GateSeq::MERGE_LIGHT));
-    addParam(ParamWidget::create<RoundSmallBlackKnob>(Vec(463, 90), module, GateSeq::MERGE_MODE_PARAM , 0.0, 5.0, 0.0));
+    addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(463, 90), module, GateSeq::MERGE_MODE_PARAM , 0.0, 4.0, 0.0));
 
     //pattern/bank buttons
     for(int i=0;i<8;i++) {
