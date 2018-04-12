@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <algorithm>
 #include <thread>
+#include <cmath>
 
 #include <sndfile.h>
 #include "dsp/frame.hpp"
@@ -356,10 +357,13 @@ void AeSampler::step() {
 	removeSample();
     }
 
-    float speed = clamp(params[PITCH_PARAM].value + inputs[SPEED_INPUT].value * params[SPEED_ATT_PARAM].value / 5.0, 0.3f, 2.0f);
+    float speed = clamp(params[PITCH_PARAM].value + inputs[SPEED_INPUT].value * params[SPEED_ATT_PARAM].value * 3.0f/5.0f, -3.0f, 3.0f);
+    speed = pow(2,speed);
     if(reverse) speed*=(-1.0f);
 
     float gain = clamp(params[GAIN_PARAM].value + inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value / 5.0, 0.0f, 1.0f);
+    //gain = exp(gain/20);
+    //gain = pow(10, gain/20);
 
     float newStartParam = params[SAMPLE_START_PARAM].value;
     if(newStartParam != startParam) {
@@ -393,7 +397,7 @@ void AeSampler::step() {
 	if(activeSample && abs(delta) <= 0.3) {
 	    delta*=0.2f;
 	    activeSample->gain += delta;
-	    activeSample->gain = clamp(activeSample->gain,0.0f, 1.5f);
+	    activeSample->gain = clamp(activeSample->gain, 0.0f, 2.0f);
 	}
     }
 
@@ -496,8 +500,8 @@ struct SampleDisplay : TransparentWidget {
 	    nvgTextAlign(vg, NVG_ALIGN_LEFT);
 	    char gainText[16];
 	    float gain = (si) ? module->activeSample->gain : 0.00f;
-	    snprintf(gainText, 16, "Gain: %1.2f", gain);
-	    nvgTextBox(vg, 0, 10, 70, gainText, NULL);
+	    snprintf(gainText, 16, "Gain: %2.1f dB", 20 * log10f(gain));
+	    nvgTextBox(vg, 0, 10, 80, gainText, NULL);
 
 	    // Draw waveform
 	    nvgStrokeColor(vg, nvgRGBA(42, 161, 174, 255));
@@ -588,9 +592,9 @@ struct AeSamplerWidget : ModuleWidget {
 	addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(138, 122), module, AeSampler::REVERSE_LIGHT));
 
 	addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(48, 115), module, AeSampler::SELECT_PARAM, 0.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 200), module, AeSampler::GAIN_PARAM, 0.0f, 1.0f, 1.0f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 200), module, AeSampler::GAIN_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<RoundBlackKnob>(Vec(58, 200), module, AeSampler::FILTER_PARAM, 0.0f, 1.0f, 0.5f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(105, 200), module, AeSampler::PITCH_PARAM, 0.5f, 2.0f, 1.0f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(105, 200), module, AeSampler::PITCH_PARAM, -2.0f, 2.0f, 0.0f));
 
 	addParam(ParamWidget::create<Trimpot>(Vec(10, 260), module, AeSampler::SELECT_ATT_PARAM, -1.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<Trimpot>(Vec(46, 260), module, AeSampler::GAIN_ATT_PARAM, -1.0f, 1.0f, 0.0f));
