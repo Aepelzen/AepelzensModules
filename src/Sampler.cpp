@@ -41,8 +41,6 @@ struct AeSampler : Module {
 	FILTER_ATT_PARAM,
 	SELECT_ATT_PARAM,
 	GAIN_ATT_PARAM,
-	LOAD_PARAM,
-	LOAD_DIR_PARAM,
 	DEL_PARAM,
 	REVERSE_PARAM,
 	SAMPLE_START_PARAM,
@@ -75,8 +73,6 @@ struct AeSampler : Module {
     bool reverse = false;
     float phase = 0.0f;
     SchmittTrigger gateTrigger;
-    SchmittTrigger loadTrigger;
-    SchmittTrigger loadDirTrigger;
     SchmittTrigger RemoveTrigger;
     SchmittTrigger ReverseTrigger;
     SchmittTrigger ReverseInputTrigger;
@@ -339,22 +335,6 @@ void AeSampler::step() {
 	gate = true;
     }
 
-    if(loadTrigger.process(params[LOAD_PARAM].value)) {
-	char* path = osdialog_file(OSDIALOG_OPEN, NULL, NULL, NULL);
-	if(path) {
-	    loadFile(path);
-	    phase = 0.0f;
-	}
-    }
-
-    if(loadDirTrigger.process(params[LOAD_DIR_PARAM].value)) {
-	char* path = osdialog_file(OSDIALOG_OPEN_DIR, NULL, NULL, NULL);
-	if(path) {
-	    loadDir(path);
-	    phase = 0.0f;
-	}
-    }
-
     if(RemoveTrigger.process(params[DEL_PARAM].value)) {
 	removeSample();
     }
@@ -560,6 +540,30 @@ struct SampleDisplay : TransparentWidget {
     }
 };
 
+struct AeLoadDirButton : LEDButton {
+    AeSampler *module;
+
+    void onAction(EventAction &e) override {
+	char* path = osdialog_file(OSDIALOG_OPEN_DIR, NULL, NULL, NULL);
+	if(path) {
+	    module->loadDir(path);
+	    //module->phase = 0.0f;
+	}
+    }
+};
+
+struct AeLoadButton : LEDButton {
+    AeSampler *module;
+
+    void onAction(EventAction &e) override {
+	char* path = osdialog_file(OSDIALOG_OPEN, NULL, NULL, NULL);
+	if(path) {
+	    module->loadFile(path);
+	    //module->phase = 0.0f;
+	}
+    }
+};
+
 struct AeSamplerWidget : ModuleWidget {
     AeSamplerWidget(AeSampler *module) : ModuleWidget(module) {
 	setPanel(SVG::load(assetPlugin(plugin, "res/Sampler.svg")));
@@ -575,18 +579,29 @@ struct AeSamplerWidget : ModuleWidget {
 	    display->box.pos = Vec(10, 25);
 	    display->box.size = Vec(130, 60);
 	    addChild(display);
+
+	    //LOAD Buttons
+	    AeLoadDirButton *ldb = new AeLoadDirButton();
+	    ldb->module = module;
+	    ldb->box.pos = Vec(10, 150);
+	    addChild(ldb);
+
+	    AeLoadButton* loadButton = new AeLoadButton();
+	    loadButton->module = module;
+	    loadButton->box.pos = Vec(10, 126);
+	    addChild(loadButton);
 	}
 
-	addParam(ParamWidget::create<LEDButton>(Vec(10, 126), module, AeSampler::LOAD_PARAM, 0.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<LEDButton>(Vec(10, 150), module, AeSampler::LOAD_DIR_PARAM, 0.0f, 1.0f, 0.0f));
+	//addParam(ParamWidget::create<LEDButton>(Vec(10, 126), module, AeSampler::LOAD_PARAM, 0.0f, 1.0f, 0.0f));
+	//addParam(ParamWidget::create<LEDButton>(Vec(10, 150), module, AeSampler::LOAD_DIR_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<LEDButton>(Vec(122, 150), module, AeSampler::DEL_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<LEDButton>(Vec(122, 126), module, AeSampler::REVERSE_PARAM, 0.0f, 1.0f, 0.0f));
-	addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(138, 122), module, AeSampler::REVERSE_LIGHT));
+	addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(138, 120), module, AeSampler::REVERSE_LIGHT));
 
 	addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(48, 115), module, AeSampler::SELECT_PARAM, 0.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 200), module, AeSampler::GAIN_PARAM, 0.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(58, 200), module, AeSampler::FILTER_PARAM, 0.0f, 1.0f, 0.5f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(105, 200), module, AeSampler::PITCH_PARAM, -2.0f, 2.0f, 0.0f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 195), module, AeSampler::GAIN_PARAM, 0.0f, 1.0f, 0.0f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(58, 195), module, AeSampler::FILTER_PARAM, 0.0f, 1.0f, 0.5f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(105, 195), module, AeSampler::PITCH_PARAM, -2.0f, 2.0f, 0.0f));
 
 	addParam(ParamWidget::create<Trimpot>(Vec(10, 260), module, AeSampler::SELECT_ATT_PARAM, -1.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<Trimpot>(Vec(46, 260), module, AeSampler::GAIN_ATT_PARAM, -1.0f, 1.0f, 0.0f));
