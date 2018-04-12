@@ -1,4 +1,5 @@
 #include "aepelzen.hpp"
+#include "AeFilter.hpp"
 #include <vector>
 #include <string>
 #include <dirent.h>
@@ -33,6 +34,7 @@ struct AeSampler : Module {
     enum ParamIds {
 	PITCH_PARAM,
 	FILTER_PARAM,
+	FILTER_Q_PARAM,
 	SELECT_PARAM,
 	GAIN_PARAM,
 	SPEED_ATT_PARAM,
@@ -83,12 +85,12 @@ struct AeSampler : Module {
     float endParam = 10.0f;
     float gainParam = 0.0f;
 
-    RCFilter filterL;
-    RCFilter filterR;
-    const float LP_MAX_FREQ = 20000.0f;
-    const float LP_MIN_FREQ = 20.0f;
-    const float HP_MAX_FREQ = 30000.0f;
-    const float HP_MIN_FREQ = 2000.0f;
+    AeFilterFrame<2> filter;
+
+    const float LP_MAX_FREQ = 16000.0f;
+    const float LP_MIN_FREQ = 30.0f;
+    const float HP_MAX_FREQ = 16000.0f;
+    const float HP_MIN_FREQ = 50.0f;
 
     std::string lastPath;
     //file properties
@@ -401,7 +403,6 @@ void AeSampler::step() {
 	}
     }
 
-    //int index = round(params[SELECT_PARAM].value * (samples.size() - 1));
     index = round(clamp(params[SELECT_PARAM].value + params[SELECT_ATT_PARAM].value * inputs[SELECT_INPUT].value / 5.0f, 0.0f, 1.0f) * (samples.size() - 1));
     if(samples.empty()) {
 	activeSample = NULL;
@@ -429,30 +430,21 @@ void AeSampler::step() {
 
     //float filterParam = params[FILTER_PARAM].value * 2.0f;
     float filterParam = clamp(params[FILTER_PARAM].value + inputs[FILTER_INPUT].value * params[FILTER_ATT_PARAM].value / 10.0f, 0.0f, 1.0f) * 2.0f;
+    float q = params[FILTER_Q_PARAM].value;
+
     if(filterParam != 1.0f) {
 	float freq;
 	if(filterParam > 1.0f) {
-	    //filterParam -= 1.0f;
 	    freq = HP_MIN_FREQ * powf(HP_MAX_FREQ / HP_MIN_FREQ, filterParam - 1.0f);
-	}
-	else
-	    freq = LP_MIN_FREQ * powf(LP_MAX_FREQ / LP_MIN_FREQ, filterParam);
-
-	//apply filter
-	float r = freq / engineGetSampleRate();
-	filterL.setCutoff(r);
-	filterR.setCutoff(r);
-	filterL.process(out.samples[0]);
-	filterR.process(out.samples[1]);
-
-	if(filterParam <= 1.0f) {
-	    out.samples[0] = filterL.lowpass();
-	    out.samples[1] = filterR.lowpass();
+	    filter.setCutoff(freq, q, AeFilterType::AeHIGHPASS);
 	}
 	else {
-	    out.samples[0] = filterL.highpass();
-	    out.samples[1] = filterR.highpass();
+	    freq = LP_MIN_FREQ * powf(LP_MAX_FREQ / LP_MIN_FREQ, filterParam);
+	    filter.setCutoff(freq, q, AeFilterType::AeLOWPASS);
 	}
+
+	//apply filter
+	out = filter.process(out);
     }
 
     outputs[L_OUTPUT].value = out.samples[0] * 5.0f * gain * activeSample->gain;
@@ -601,6 +593,7 @@ struct AeSamplerWidget : ModuleWidget {
 	addParam(ParamWidget::create<Trimpot>(Vec(82, 260), module, AeSampler::FILTER_ATT_PARAM, -1.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<Trimpot>(Vec(118, 260), module, AeSampler::SPEED_ATT_PARAM, -1.0f, 1.0f, 0.0f));
 
+	addParam(ParamWidget::create<Trimpot>(Vec(64, 240), module, AeSampler::FILTER_Q_PARAM, 0.5f, 2.0f, 0.8f));
 
 	addInput(Port::create<PJ301MPort>(Vec(6, 295), Port::INPUT, module, AeSampler::SELECT_INPUT));
 	addInput(Port::create<PJ301MPort>(Vec(42, 295), Port::INPUT, module, AeSampler::GAIN_INPUT));
