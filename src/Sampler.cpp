@@ -39,8 +39,9 @@ struct AeSampler : Module {
 	SELECT_ATT_PARAM,
 	GAIN_ATT_PARAM,
 	LOAD_PARAM,
-	DEL_PARAM,
 	LOAD_DIR_PARAM,
+	DEL_PARAM,
+	REVERSE_PARAM,
 	SAMPLE_START_PARAM,
 	SAMPLE_END_PARAM,
 	SAMPLE_GAIN_PARAM,
@@ -52,6 +53,7 @@ struct AeSampler : Module {
 	GAIN_INPUT,
 	FILTER_INPUT,
 	SPEED_INPUT,
+	REVERSE_INPUT,
 	NUM_INPUTS
     };
     enum OutputIds {
@@ -60,17 +62,21 @@ struct AeSampler : Module {
 	NUM_OUTPUTS
     };
     enum LightIds {
+	REVERSE_LIGHT,
 	NUM_LIGHTS
     };
 
     SampleRateConverter<2> converter;
 
     bool gate = false;
+    bool reverse = false;
     float phase = 0.0f;
     SchmittTrigger gateTrigger;
     SchmittTrigger loadTrigger;
     SchmittTrigger loadDirTrigger;
     SchmittTrigger RemoveTrigger;
+    SchmittTrigger ReverseTrigger;
+    SchmittTrigger ReverseInputTrigger;
 
     float startParam = 10.0f;
     float endParam = 10.0f;
@@ -128,7 +134,6 @@ struct AeSampler : Module {
     }
 
     void onSampleRateChange() override  {
-	debug("OnAeSamplerateChange");
 	//get filenames for all loaded files
 	std::vector<std::string> filenames;
 	for(std::vector<SampleInfo>::const_iterator iter = samples.begin(); iter != samples.end();++iter) {
@@ -157,13 +162,15 @@ struct AeSampler : Module {
 
 	for(std::vector<SampleInfo>::const_iterator iter = samples.begin(); iter != samples.end();++iter) {
 	    if(!iter->path.empty()) {
-		//sampleInfo entry (path, start, gain)
+		//sampleInfo entry (path, start, end, gain)
 		json_t *entryJ = json_array();
 
 		json_t *fileJ = json_string((*iter).path.c_str());
 		json_array_append_new(entryJ, fileJ);
 		json_t *startJ = json_integer(iter->start);
 		json_array_append_new(entryJ, startJ);
+		json_t *endJ = json_integer(iter->end);
+		json_array_append_new(entryJ, endJ);
 		json_t *gainJ = json_real(iter->gain);
 		json_array_append_new(entryJ, gainJ);
 
@@ -175,7 +182,6 @@ struct AeSampler : Module {
     };
 
     void fromJson(json_t *rootJ) override {
-	//debug("fromJson");
 	json_t *samplesJ = json_object_get(rootJ, "files");
 	int size = json_array_size(samplesJ);
 	for(int i=0;i<size;i++) {
@@ -186,7 +192,9 @@ struct AeSampler : Module {
 		if (fileJ) loadFile(json_string_value(fileJ));
 		json_t* startJ = json_array_get(entryJ,1);
 		if(startJ) samples[i].start = json_integer_value(startJ);
-		json_t* gainJ = json_array_get(entryJ,2);
+		json_t* endJ = json_array_get(entryJ,2);
+		if(endJ) samples[i].end = json_integer_value(endJ);
+		json_t* gainJ = json_array_get(entryJ,3);
 		if(gainJ) samples[i].gain = json_number_value(gainJ);
 	    }
 	}
@@ -275,7 +283,7 @@ void AeSampler::loadFile(const char* path) {
 	converter.refreshState();
 	converter.setChannels(2);
 	converter.setRates(si.rate, engineGetSampleRate());
-	debug("call converter with %i input and %i output frames", inputFrames, si.bufferLength);
+	//debug("call converter with %i input and %i output frames", inputFrames, si.bufferLength);
 	converter.process(inbuffer, &inputFrames, si.buffer, &(si.bufferLength));
 	//debug("done. Got %i samples",si.bufferLength);
 	//only free this when it was converted
@@ -317,12 +325,14 @@ struct TinyEncoder : Trimpot {
 };
 
 void AeSampler::step() {
-    float speed = clamp(params[PITCH_PARAM].value + inputs[SPEED_INPUT].value * params[SPEED_ATT_PARAM].value / 5.0, 0.3f, 2.0f);
-    float gain = clamp(params[GAIN_PARAM].value + inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value / 5.0, 0.0f, 1.0f);
+
+    //Process Triggers
+    if(ReverseTrigger.process(params[REVERSE_PARAM].value) || ReverseInputTrigger.process(inputs[REVERSE_INPUT].value)) {
+	reverse = !reverse;
+    }
 
     if(gateTrigger.process(inputs[GATE_INPUT].value)) {
-	//phase = 0.0f;
-	phase = activeSample->start;
+	phase = reverse ? activeSample->end - 1 : activeSample->start;
 	gate = true;
     }
 
@@ -345,6 +355,11 @@ void AeSampler::step() {
     if(RemoveTrigger.process(params[DEL_PARAM].value)) {
 	removeSample();
     }
+
+    float speed = clamp(params[PITCH_PARAM].value + inputs[SPEED_INPUT].value * params[SPEED_ATT_PARAM].value / 5.0, 0.3f, 2.0f);
+    if(reverse) speed*=(-1.0f);
+
+    float gain = clamp(params[GAIN_PARAM].value + inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value / 5.0, 0.0f, 1.0f);
 
     float newStartParam = params[SAMPLE_START_PARAM].value;
     if(newStartParam != startParam) {
@@ -398,7 +413,7 @@ void AeSampler::step() {
     }
 
     Frame<2> out;
-    if (phase < activeSample->end && gate){
+    if ((phase < activeSample->end) && (phase >= activeSample->start) && gate){
 	phase+=speed;
 	out = interpolateFrame(activeSample->buffer,phase);
     }
@@ -438,6 +453,7 @@ void AeSampler::step() {
 
     outputs[L_OUTPUT].value = out.samples[0] * 5.0f * gain * activeSample->gain;
     outputs[R_OUTPUT].value = out.samples[1] * 5.0f * gain * activeSample->gain;
+    lights[REVERSE_LIGHT].value = reverse ? 1.0f : 0.0f;
 }
 
 
@@ -568,6 +584,8 @@ struct AeSamplerWidget : ModuleWidget {
 	addParam(ParamWidget::create<LEDButton>(Vec(10, 126), module, AeSampler::LOAD_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<LEDButton>(Vec(10, 150), module, AeSampler::LOAD_DIR_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<LEDButton>(Vec(122, 150), module, AeSampler::DEL_PARAM, 0.0f, 1.0f, 0.0f));
+	addParam(ParamWidget::create<LEDButton>(Vec(122, 126), module, AeSampler::REVERSE_PARAM, 0.0f, 1.0f, 0.0f));
+	addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(138, 122), module, AeSampler::REVERSE_LIGHT));
 
 	addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(48, 115), module, AeSampler::SELECT_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 200), module, AeSampler::GAIN_PARAM, 0.0f, 1.0f, 1.0f));
@@ -586,6 +604,7 @@ struct AeSamplerWidget : ModuleWidget {
 	addInput(Port::create<PJ301MPort>(Vec(114, 295), Port::INPUT, module, AeSampler::SPEED_INPUT));
 
 	addInput(Port::create<PJ301MPort>(Vec(6, 340), Port::INPUT, module, AeSampler::GATE_INPUT));
+	addInput(Port::create<PJ301MPort>(Vec(42, 340), Port::INPUT, module, AeSampler::REVERSE_INPUT));
 	addOutput(Port::create<PJ301MPort>(Vec(78, 340), Port::OUTPUT, module, AeSampler::L_OUTPUT));
 	addOutput(Port::create<PJ301MPort>(Vec(114, 340), Port::OUTPUT, module, AeSampler::R_OUTPUT));
 
