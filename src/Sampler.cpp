@@ -5,15 +5,20 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <algorithm>
-#include <thread>
 #include <cmath>
 
 #include <sndfile.h>
+
 #include "dsp/frame.hpp"
 #include "dsp/digital.hpp"
 #include "dsp/samplerate.hpp"
-#include "dsp/filter.hpp"
 #include "osdialog.h"
+
+#ifdef ARCH_WIN
+#define PATH_SEP '\\'
+#else
+#define PATH_SEP '/'
+#endif
 
 struct SampleInfo {
     std::string path;
@@ -88,7 +93,7 @@ struct AeSampler : Module {
     const float HP_MAX_FREQ = 16000.0f;
     const float HP_MIN_FREQ = 50.0f;
 
-    std::string lastPath;
+    std::string lastPath = "";
     //file properties
     bool fileLoaded = false;
     std::vector<SampleInfo> samples;
@@ -137,7 +142,7 @@ struct AeSampler : Module {
 	std::vector<std::string> filenames;
 	for(std::vector<SampleInfo>::const_iterator iter = samples.begin(); iter != samples.end();++iter) {
 	    if(!iter->path.empty()) filenames.push_back(iter->path);
-	    debug("found sample %s", iter->path.c_str());
+	    //debug("found sample %s", iter->path.c_str());
 	}
 	freeSamples();
 	//load them
@@ -187,7 +192,7 @@ struct AeSampler : Module {
 	    json_t *entryJ = json_array_get(samplesJ, i);
 	    if(entryJ) {
 		json_t *fileJ = json_array_get(entryJ,0);
-		debug("found sample: %s", json_string_value(fileJ));
+		//debug("found sample: %s", json_string_value(fileJ));
 		if (fileJ) loadFile(json_string_value(fileJ));
 		json_t* startJ = json_array_get(entryJ,1);
 		if(startJ) samples[i].start = json_integer_value(startJ);
@@ -207,7 +212,7 @@ bool compareSampleInfos (SampleInfo i,SampleInfo j) {
 inline Frame<2> AeSampler::interpolateFrame(Frame<2> *buf, float phase) {
     float i = 0;
     float frac = modf(phase,&i);
-    int index = clamp((int)i,0,activeSample->bufferLength-1);
+    int index = clamp((int)i,0,activeSample->bufferLength-2);
 
     Frame<2> out;
     out.samples[0] = buf[index].samples[0] + frac * (buf[index+1].samples[0] - buf[index].samples[0]);
@@ -295,6 +300,7 @@ void AeSampler::loadFile(const char* path) {
     fileLoaded = true;
 };
 
+#ifndef ARCH_WIN
 void AeSampler::loadDir(const char* path) {
     struct dirent *entry;
     DIR *dir = opendir(path);
@@ -316,6 +322,7 @@ void AeSampler::loadDir(const char* path) {
     //readdir returns files unordered (order by filenames)
     if (samples.size() > 1) sort(samples.begin(), samples.end(), compareSampleInfos);
 }
+#endif
 
 struct TinyEncoder : Trimpot {
     TinyEncoder() {
@@ -330,17 +337,16 @@ void AeSampler::step() {
 	reverse = !reverse;
     }
 
-    if(gateTrigger.process(inputs[GATE_INPUT].value)) {
-	phase = reverse ? activeSample->end - 1 : activeSample->start;
-	gate = true;
-    }
-
     if(RemoveTrigger.process(params[DEL_PARAM].value)) {
 	removeSample();
     }
 
     float speed = clamp(params[PITCH_PARAM].value + inputs[SPEED_INPUT].value * params[SPEED_ATT_PARAM].value * 3.0f/5.0f, -3.0f, 3.0f);
     speed = pow(2,speed);
+    //linear fm
+    //float speed = params[PITCH_PARAM].value;
+    //speed = clamp(speed * (1 + inputs[SPEED_INPUT].value  /5.0f * params[SPEED_ATT_PARAM].value), 0.05f,3.0f);
+
     if(reverse) speed*=(-1.0f);
 
     float gain = clamp(params[GAIN_PARAM].value + inputs[GAIN_INPUT].value * params[GAIN_ATT_PARAM].value / 5.0, 0.0f, 1.0f);
@@ -355,7 +361,7 @@ void AeSampler::step() {
 	if(activeSample && abs(delta) <= 0.3) {
 	    delta*=(activeSample->bufferLength * 0.1f);
 	    activeSample->start += delta;
-	    activeSample->start = clamp(activeSample->start,0, activeSample->bufferLength);
+	    activeSample->start = clamp(activeSample->start,0, activeSample->end);
 	}
     }
 
@@ -367,7 +373,7 @@ void AeSampler::step() {
 	if(activeSample && abs(delta) <= 0.3) {
 	    delta*=(activeSample->bufferLength * 0.1f);
 	    activeSample->end += delta;
-	    activeSample->end = clamp(activeSample->end,0, activeSample->bufferLength);
+	    activeSample->end = clamp(activeSample->end, activeSample->start, activeSample->bufferLength);
 	}
     }
 
@@ -377,7 +383,7 @@ void AeSampler::step() {
 	gainParam = newGainParam;
 	//filter out jumps during initialisation (set smooth = false !!!)
 	if(activeSample && abs(delta) <= 0.3) {
-	    delta*=0.2f;
+	    delta*=0.5f;
 	    activeSample->gain += delta;
 	    activeSample->gain = clamp(activeSample->gain, 0.0f, 2.0f);
 	}
@@ -397,6 +403,11 @@ void AeSampler::step() {
 	return;
     }
 
+    if(gateTrigger.process(inputs[GATE_INPUT].value)) {
+	phase = reverse ? activeSample->end - 1 : activeSample->start;
+	gate = true;
+    }
+
     Frame<2> out;
     if ((phase < activeSample->end) && (phase >= activeSample->start) && gate){
 	phase+=speed;
@@ -408,8 +419,7 @@ void AeSampler::step() {
 	out.samples[1] = 0.0f;
     }
 
-    //float filterParam = params[FILTER_PARAM].value * 2.0f;
-    float filterParam = clamp(params[FILTER_PARAM].value + inputs[FILTER_INPUT].value * params[FILTER_ATT_PARAM].value / 10.0f, 0.0f, 1.0f) * 2.0f;
+    float filterParam = clamp(params[FILTER_PARAM].value + inputs[FILTER_INPUT].value * params[FILTER_ATT_PARAM].value / 5.0f, 0.0f, 1.0f) * 2.0f;
     float q = params[FILTER_Q_PARAM].value;
 
     if(filterParam != 1.0f) {
@@ -422,7 +432,6 @@ void AeSampler::step() {
 	    freq = LP_MIN_FREQ * powf(LP_MAX_FREQ / LP_MIN_FREQ, filterParam);
 	    filter.setCutoff(freq, q, AeFilterType::AeLOWPASS);
 	}
-
 	//apply filter
 	out = filter.process(out);
     }
@@ -471,7 +480,7 @@ struct SampleDisplay : TransparentWidget {
 
 	    nvgTextAlign(vg, NVG_ALIGN_LEFT);
 	    char gainText[16];
-	    float gain = (si) ? module->activeSample->gain : 0.00f;
+	    float gain = (si) ? si->gain : 0.00f;
 	    snprintf(gainText, 16, "Gain: %2.1f dB", 20 * log10f(gain));
 	    nvgTextBox(vg, 0, 10, 80, gainText, NULL);
 
@@ -506,8 +515,6 @@ struct SampleDisplay : TransparentWidget {
 	    nvgRestore(vg);
 
 	    // Draw start line
-	    //nvgStrokeColor(vg, nvgRGBA(168, 15, 15, 255));
-	    //nvgStrokeColor(vg, nvgRGBA(0xdc, 0x75, 0x2f, 255));
 	    nvgStrokeColor(vg, nvgRGBA(0xbc, 0x63, 0xc5, 255));
 	    nvgBeginPath(vg);
 	    nvgStrokeWidth(vg, 1);
@@ -521,7 +528,7 @@ struct SampleDisplay : TransparentWidget {
 	    nvgStrokeColor(vg, nvgRGBA(0xbc, 0x63, 0xc5, 255));
 	    nvgBeginPath(vg);
 	    nvgStrokeWidth(vg, 1);
-	    x = (si) ? clamp((int)(130.0f * si->end/si->bufferLength), 1, 130) : 0;
+	    x = (si) ? clamp((int)(130.0f * si->end/si->bufferLength), 1, 129) : 0;
 	    nvgMoveTo(vg,x, 10);
 	    nvgLineTo(vg,x, 60);
 	    nvgClosePath(vg);
@@ -531,7 +538,7 @@ struct SampleDisplay : TransparentWidget {
 	    nvgStrokeColor(vg, nvgRGBA(168, 15, 15, 255));
 	    nvgBeginPath(vg);
 	    nvgStrokeWidth(vg, 1);
-	    x = (si) ? clamp((int)(module->phase/si->bufferLength * 130), 1, 130) : 0;
+	    x = (si) ? clamp((int)(module->phase/si->bufferLength * 130), 1, 129) : 0;
 	    nvgMoveTo(vg,x, 10);
 	    nvgLineTo(vg,x, 60);
 	    nvgClosePath(vg);
@@ -543,23 +550,33 @@ struct SampleDisplay : TransparentWidget {
 struct AeLoadDirButton : LEDButton {
     AeSampler *module;
 
+#ifndef ARCH_WIN
     void onAction(EventAction &e) override {
-	char* path = osdialog_file(OSDIALOG_OPEN_DIR, NULL, NULL, NULL);
+	char* path = osdialog_file(OSDIALOG_OPEN_DIR, module->lastPath.c_str(), NULL, NULL);
 	if(path) {
 	    module->loadDir(path);
-	    //module->phase = 0.0f;
+	    module->lastPath = path;
+	    free(path);
 	}
     }
+#endif
 };
 
 struct AeLoadButton : LEDButton {
     AeSampler *module;
 
     void onAction(EventAction &e) override {
-	char* path = osdialog_file(OSDIALOG_OPEN, NULL, NULL, NULL);
+	char* path = osdialog_file(OSDIALOG_OPEN, module->lastPath.c_str(), NULL, NULL);
 	if(path) {
 	    module->loadFile(path);
-	    //module->phase = 0.0f;
+	    std::string lp  = path;
+	    module->lastPath = lp.substr(0,lp.find_last_of(PATH_SEP));
+	    // int lastIndex = strlen(path) - 1;
+	    // while(path[lastIndex] != PATH_SEP) lastIndex--;
+	    // if(lastIndex < 128) {
+	    //	strncpy(module->lastPath,path,lastIndex);
+	    // }
+	    free(path);
 	}
     }
 };
@@ -592,28 +609,26 @@ struct AeSamplerWidget : ModuleWidget {
 	    addChild(loadButton);
 	}
 
-	//addParam(ParamWidget::create<LEDButton>(Vec(10, 126), module, AeSampler::LOAD_PARAM, 0.0f, 1.0f, 0.0f));
-	//addParam(ParamWidget::create<LEDButton>(Vec(10, 150), module, AeSampler::LOAD_DIR_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<LEDButton>(Vec(122, 150), module, AeSampler::DEL_PARAM, 0.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<LEDButton>(Vec(122, 126), module, AeSampler::REVERSE_PARAM, 0.0f, 1.0f, 0.0f));
 	addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(138, 120), module, AeSampler::REVERSE_LIGHT));
 
-	addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(48, 115), module, AeSampler::SELECT_PARAM, 0.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 195), module, AeSampler::GAIN_PARAM, 0.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(58, 195), module, AeSampler::FILTER_PARAM, 0.0f, 1.0f, 0.5f));
-	addParam(ParamWidget::create<RoundBlackKnob>(Vec(105, 195), module, AeSampler::PITCH_PARAM, -2.0f, 2.0f, 0.0f));
+	addParam(ParamWidget::create<Davies1900hLargeBlackKnob>(Vec(48, 120), module, AeSampler::SELECT_PARAM, 0.0f, 1.0f, 0.0f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(10, 205), module, AeSampler::GAIN_PARAM, 0.0f, 1.0f, 1.0f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(58, 205), module, AeSampler::PITCH_PARAM, -2.0f, 2.0f, 0.0f));
+	addParam(ParamWidget::create<RoundBlackKnob>(Vec(105, 205), module, AeSampler::FILTER_PARAM, 0.0f, 1.0f, 0.5f));
+
+	addParam(ParamWidget::create<Trimpot>(Vec(125, 188), module, AeSampler::FILTER_Q_PARAM, 0.5f, 2.0f, 0.8f));
 
 	addParam(ParamWidget::create<Trimpot>(Vec(10, 260), module, AeSampler::SELECT_ATT_PARAM, -1.0f, 1.0f, 0.0f));
 	addParam(ParamWidget::create<Trimpot>(Vec(46, 260), module, AeSampler::GAIN_ATT_PARAM, -1.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<Trimpot>(Vec(82, 260), module, AeSampler::FILTER_ATT_PARAM, -1.0f, 1.0f, 0.0f));
-	addParam(ParamWidget::create<Trimpot>(Vec(118, 260), module, AeSampler::SPEED_ATT_PARAM, -1.0f, 1.0f, 0.0f));
-
-	addParam(ParamWidget::create<Trimpot>(Vec(64, 240), module, AeSampler::FILTER_Q_PARAM, 0.5f, 2.0f, 0.8f));
+	addParam(ParamWidget::create<Trimpot>(Vec(82, 260), module, AeSampler::SPEED_ATT_PARAM, -1.0f, 1.0f, 0.0f));
+	addParam(ParamWidget::create<Trimpot>(Vec(118, 260), module, AeSampler::FILTER_ATT_PARAM, -1.0f, 1.0f, 0.0f));
 
 	addInput(Port::create<PJ301MPort>(Vec(6, 295), Port::INPUT, module, AeSampler::SELECT_INPUT));
 	addInput(Port::create<PJ301MPort>(Vec(42, 295), Port::INPUT, module, AeSampler::GAIN_INPUT));
-	addInput(Port::create<PJ301MPort>(Vec(78, 295), Port::INPUT, module, AeSampler::FILTER_INPUT));
-	addInput(Port::create<PJ301MPort>(Vec(114, 295), Port::INPUT, module, AeSampler::SPEED_INPUT));
+	addInput(Port::create<PJ301MPort>(Vec(78, 295), Port::INPUT, module, AeSampler::SPEED_INPUT));
+	addInput(Port::create<PJ301MPort>(Vec(114, 295), Port::INPUT, module, AeSampler::FILTER_INPUT));
 
 	addInput(Port::create<PJ301MPort>(Vec(6, 340), Port::INPUT, module, AeSampler::GATE_INPUT));
 	addInput(Port::create<PJ301MPort>(Vec(42, 340), Port::INPUT, module, AeSampler::REVERSE_INPUT));
