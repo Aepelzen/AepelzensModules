@@ -95,7 +95,7 @@ void Erwin::step() {
 
     //Scale selection
     int scaleOffset = clamp((int)(params[SELECT_PARAM].value + inputs[SELECT_INPUT].value * NUM_SCALES /10),0,15) * 12;
-    bool* currentScale = &noteState[0] + scaleOffset * sizeof(bool);
+    bool* currentScale = noteState + scaleOffset;
 
     //limit to 1 octave
     transposeSemi = (int)round(inputs[SEMI_INPUT].value * 1.2);
@@ -236,6 +236,7 @@ struct ErwinSaveItem : MenuItem {
 		if (json_dump_file(rootJ, path, 0))
 		    debug("Error: Can not export Erwin Scale file");
 	    }
+	    free(path);
 	}
     }
 };
@@ -264,6 +265,7 @@ struct ErwinLoadItem : MenuItem {
 		debug("Text: %s", error.text);
 		debug("Source: %s", error.source);
 	    }
+	    free(path);
 	}
     }
 };
