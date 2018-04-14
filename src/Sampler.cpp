@@ -2,7 +2,6 @@
 #include "AeFilter.hpp"
 #include <vector>
 #include <string>
-#include <dirent.h>
 #include <sys/types.h>
 #include <algorithm>
 #include <cmath>
@@ -17,6 +16,7 @@
 #ifdef ARCH_WIN
 #define PATH_SEP '\\'
 #else
+#include <dirent.h>
 #define PATH_SEP '/'
 #endif
 
@@ -125,7 +125,6 @@ struct AeSampler : Module {
     }
 
     void freeSamples() {
-	debug("freeSamples()");
 	//reset these first so the display widget doesn't freak out
 	fileLoaded = false;
 	activeSample = NULL;
@@ -257,7 +256,6 @@ void AeSampler::loadFile(const char* path) {
     sf_close(file);
 
     //convert to frame
-    //int inputFrames = si.frames/si.channels;
     int inputFrames = si.frames;
     Frame<2> *inbuffer = (Frame<2>*)malloc(inputFrames * sizeof(Frame<2>));
     if(si.channels == 1) {
@@ -448,7 +446,6 @@ struct SampleDisplay : TransparentWidget {
     std::string displayParams;
 
     SampleDisplay() {
-	//font = Font::load(assetPlugin(plugin, "res/DejaVuSansMono.ttf"));
 	font = Font::load(assetGlobal("res/fonts/DejaVuSans.ttf"));
     }
 
@@ -465,7 +462,6 @@ struct SampleDisplay : TransparentWidget {
 
 	// Draw ref line
 	nvgStrokeColor(vg, nvgRGBA(0xff, 0xff, 0xff, 0x30));
-	nvgStrokeWidth(vg, 1);
 	{
 	    nvgBeginPath(vg);
 	    nvgMoveTo(vg, 0, 35);
@@ -507,7 +503,6 @@ struct SampleDisplay : TransparentWidget {
 	    }
 	    nvgLineCap(vg, NVG_ROUND);
 	    nvgMiterLimit(vg, 2.0);
-	    nvgStrokeWidth(vg, 1);
 	    //nvgGlobalCompositeOperation(vg, NVG_LIGHTER);
 	    nvgGlobalCompositeOperation(vg, NVG_SOURCE_OVER);
 	    nvgStroke(vg);
@@ -517,7 +512,6 @@ struct SampleDisplay : TransparentWidget {
 	    // Draw start line
 	    nvgStrokeColor(vg, nvgRGBA(0xbc, 0x63, 0xc5, 255));
 	    nvgBeginPath(vg);
-	    nvgStrokeWidth(vg, 1);
 	    int x = (si) ? clamp((int)(130.0f * si->start/si->bufferLength), 1, 130) : 0;
 	    nvgMoveTo(vg,x, 10);
 	    nvgLineTo(vg,x, 60);
@@ -525,9 +519,7 @@ struct SampleDisplay : TransparentWidget {
 	    nvgStroke(vg);
 
 	    // Draw end line
-	    nvgStrokeColor(vg, nvgRGBA(0xbc, 0x63, 0xc5, 255));
 	    nvgBeginPath(vg);
-	    nvgStrokeWidth(vg, 1);
 	    x = (si) ? clamp((int)(130.0f * si->end/si->bufferLength), 1, 129) : 0;
 	    nvgMoveTo(vg,x, 10);
 	    nvgLineTo(vg,x, 60);
@@ -537,7 +529,6 @@ struct SampleDisplay : TransparentWidget {
 	    // Draw play line
 	    nvgStrokeColor(vg, nvgRGBA(168, 15, 15, 255));
 	    nvgBeginPath(vg);
-	    nvgStrokeWidth(vg, 1);
 	    x = (si) ? clamp((int)(module->phase/si->bufferLength * 130), 1, 129) : 0;
 	    nvgMoveTo(vg,x, 10);
 	    nvgLineTo(vg,x, 60);
