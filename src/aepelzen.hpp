@@ -37,6 +37,14 @@ struct SnapTrimpot : Trimpot {
     }
 };
 
+struct BefacoTinyRedKnob : SVGKnob {
+	BefacoTinyRedKnob() {
+		minAngle = -0.75*M_PI;
+		maxAngle = 0.75*M_PI;
+		setSVG(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/BefacoTinyRedKnob.svg")));
+	}
+};
+
 template <typename BASE>
 struct BigLight : BASE {
 	BigLight() {
@@ -53,3 +61,4 @@ extern Model *modelWalker;
 extern Model *modelErwin;
 extern Model *modelWerner;
 extern Model *modelAeSampler;
+extern Model *modelMixer;

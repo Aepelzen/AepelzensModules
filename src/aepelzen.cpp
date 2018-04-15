@@ -17,4 +17,5 @@ void init(rack::Plugin *p) {
 	p->addModel(modelErwin);
 	p->addModel(modelWerner);
 	p->addModel(modelAeSampler);
+	p->addModel(modelMixer);
 }
