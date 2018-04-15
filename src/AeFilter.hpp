@@ -62,13 +62,13 @@ struct AeFilterFrame : AeFilter {
 	Frame<CHANNELS> out;
 	for(int i=0;i<channels;i++) {
 	    out.samples[i] = b0 * in.samples[i] + b1 * x[0].samples[i] + b2 * x[1].samples[i] - a1 * y[0].samples[i] - a2 * y[1].samples[i];
-
-	    //shift buffers
-	    x[1].samples[i] = x[0].samples[i];
-	    x[0].samples[i] = in.samples[i];
-	    y[1].samples[i] = y[0].samples[i];
-	    y[0].samples[i] = out.samples[i];
 	}
+
+	//shift buffers
+	x[1] = x[0];
+	x[0] = in;
+	y[1] = y[0];
+	y[0] = out;
 	return out;
     }
 };

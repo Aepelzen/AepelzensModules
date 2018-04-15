@@ -90,7 +90,7 @@ struct AeSampler : Module {
 
     const float LP_MAX_FREQ = 16000.0f;
     const float LP_MIN_FREQ = 30.0f;
-    const float HP_MAX_FREQ = 16000.0f;
+    const float HP_MAX_FREQ = 14000.0f;
     const float HP_MIN_FREQ = 50.0f;
 
     std::string lastPath = "";
