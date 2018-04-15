@@ -6,6 +6,12 @@ enum AeFilterType {
     AeHIGHPASS
 };
 
+enum AeEQType {
+    AeLOWSHELVE,
+    AeHIGHSHELVE,
+    AePEAKINGEQ
+};
+
 struct AeFilter {
     float x[2];
     float y[2];
@@ -96,5 +102,60 @@ struct AeFilterStereo : AeFilter {
 
 	*inL = l;
 	*inR = r;
+    }
+};
+
+struct AeEqualizer {
+    float x[2];
+    float y[2];
+
+    float a0, a1, a2, b0, b1, b2;
+
+    float process(float in) {
+	float out = b0 * in + b1 * x[0] + b2 * x[1] - a1 * y[0] - a2 * y[1];
+
+	//shift buffers
+	x[1] = x[0];
+	x[0] = in;
+	y[1] = y[0];
+	y[0] = out;
+
+	return out;
+    }
+
+    void setParams(float f, float q, float gaindb, AeEQType type) {
+
+	float w0 = 2*M_PI*f/engineGetSampleRate();
+	float alpha = sin(w0)/(2.0f * q);
+	float cs0 = cos(w0);
+	float A = pow(10, gaindb/40.0f);
+
+	switch(type) {
+	case AeLOWSHELVE:
+            a0 = (A + 1.0f) + (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha;
+
+	    b0 = A * ((A + 1.0f) - (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha )/a0;
+            b1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cs0) /a0;
+            b2 = A * ((A + 1.0f) - (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha ) /a0;
+            a1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cs0 ) /a0;
+            a2 = ((A + 1.0f) + (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha) /a0;
+	    break;
+	case AeHIGHSHELVE:
+	    a0 = (A + 1.0f) - (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha;
+
+	    b0 = A * ((A + 1.0f) + (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha )/a0;
+            b1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cs0) /a0;
+            b2 = A * ((A + 1.0f) + (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha ) /a0;
+            a1 = 2.0f * ((A - 1.0f) - (A + 1.0f) * cs0 ) /a0;
+            a2 = ((A + 1.0f) - (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha) /a0;
+	    break;
+	case AePEAKINGEQ:
+	    a0 = 1.0f + alpha/A;
+	    b0 = (1.0f + alpha * A) /a0;
+	    b1 = -2.0f * cs0 /a0;
+	    b2 = (1.0f - alpha * A) /a0;
+	    a1 = -2.0f * cs0 /a0;
+	    a2 = (1.0f - alpha /A) /a0;
+	}
     }
 };
