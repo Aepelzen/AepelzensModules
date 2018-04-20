@@ -37,11 +37,27 @@ struct SnapTrimpot : Trimpot {
     }
 };
 
+struct BefacoTinyWhiteKnob : SVGKnob {
+	BefacoTinyWhiteKnob() {
+		minAngle = -0.75*M_PI;
+		maxAngle = 0.75*M_PI;
+		setSVG(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/BefacoTinyWhiteKnob.svg")));
+	}
+};
+
 struct BefacoTinyRedKnob : SVGKnob {
 	BefacoTinyRedKnob() {
 		minAngle = -0.75*M_PI;
 		maxAngle = 0.75*M_PI;
 		setSVG(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/BefacoTinyRedKnob.svg")));
+	}
+};
+
+struct BefacoTinyDarkKnob : SVGKnob {
+	BefacoTinyDarkKnob() {
+		minAngle = -0.75*M_PI;
+		maxAngle = 0.75*M_PI;
+		setSVG(SVG::load(assetPlugin(plugin,"res/ComponentLibrary/BefacoTinyDarkKnob.svg")));
 	}
 };
 
