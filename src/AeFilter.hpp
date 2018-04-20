@@ -171,3 +171,29 @@ struct AeEqualizer {
 	}
     }
 };
+
+struct AeEqualizerStereo : AeEqualizer {
+    float xl[2] = {0.0f};
+    float xr[2] = {0.0f};
+    float yl[2] = {0.0f};
+    float yr[2] = {0.0f};
+
+    void process(float* inL, float* inR) {
+	float l = b0 * *inL + b1 * xl[0] + b2 * xl[1] - a1 * yl[0] - a2 * yl[1];
+	float r = b0 * *inR + b1 * xr[0] + b2 * xr[1] - a1 * yr[0] - a2 * yr[1];
+
+	//shift buffers
+	xl[1] = xl[0];
+	xl[0] = *inL;
+	xr[1] = xr[0];
+	xr[0] = *inR;
+
+	yl[1] = yl[0];
+	yl[0] = l;
+	yr[1] = yr[0];
+	yr[0] = r;
+
+	*inL = l;
+	*inR = r;
+    }
+};
