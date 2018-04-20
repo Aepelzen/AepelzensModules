@@ -13,8 +13,8 @@ enum AeEQType {
 };
 
 struct AeFilter {
-    float x[2];
-    float y[2];
+    float x[2] = {0.0f};
+    float y[2] =  {0.0f};
 
     float a0, a1, a2, b0, b1, b2;
 
@@ -64,6 +64,19 @@ struct AeFilterFrame : AeFilter {
 
     int channels = CHANNELS;
 
+    AeFilterFrame() {
+	init();
+    }
+
+    void init() {
+	for(int i=0;i<channels;i++) {
+	    x[0].samples[i] = 0.0f;
+	    x[1].samples[i] = 0.0f;
+	    y[0].samples[i] = 0.0f;
+	    y[1].samples[i] = 0.0f;
+	}
+    }
+
     Frame<CHANNELS> process(Frame<CHANNELS> in) {
 	Frame<CHANNELS> out;
 	for(int i=0;i<channels;i++) {
@@ -80,10 +93,10 @@ struct AeFilterFrame : AeFilter {
 };
 
 struct AeFilterStereo : AeFilter {
-    float xl[2];
-    float xr[2];
-    float yl[2];
-    float yr[2];
+    float xl[2] = {0.0f};
+    float xr[2] = {0.0f};
+    float yl[2] = {0.0f};
+    float yr[2] = {0.0f};
 
     void process(float* inL, float* inR) {
 	float l = b0 * *inL + b1 * xl[0] + b2 * xl[1] - a1 * yl[0] - a2 * yl[1];
@@ -106,14 +119,13 @@ struct AeFilterStereo : AeFilter {
 };
 
 struct AeEqualizer {
-    float x[2];
-    float y[2];
+    float x[2] = {0.0f};
+    float y[2] = {0.0f};
 
     float a0, a1, a2, b0, b1, b2;
 
     float process(float in) {
 	float out = b0 * in + b1 * x[0] + b2 * x[1] - a1 * y[0] - a2 * y[1];
-
 	//shift buffers
 	x[1] = x[0];
 	x[0] = in;
@@ -132,22 +144,22 @@ struct AeEqualizer {
 
 	switch(type) {
 	case AeLOWSHELVE:
-            a0 = (A + 1.0f) + (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha;
+	    a0 = (A + 1.0f) + (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha;
 
 	    b0 = A * ((A + 1.0f) - (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha )/a0;
-            b1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cs0) /a0;
-            b2 = A * ((A + 1.0f) - (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha ) /a0;
-            a1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cs0 ) /a0;
-            a2 = ((A + 1.0f) + (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha) /a0;
+	    b1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cs0) /a0;
+	    b2 = A * ((A + 1.0f) - (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha ) /a0;
+	    a1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cs0 ) /a0;
+	    a2 = ((A + 1.0f) + (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha) /a0;
 	    break;
 	case AeHIGHSHELVE:
 	    a0 = (A + 1.0f) - (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha;
 
 	    b0 = A * ((A + 1.0f) + (A - 1.0f) * cs0 + 2 * sqrt(A) * alpha )/a0;
-            b1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cs0) /a0;
-            b2 = A * ((A + 1.0f) + (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha ) /a0;
-            a1 = 2.0f * ((A - 1.0f) - (A + 1.0f) * cs0 ) /a0;
-            a2 = ((A + 1.0f) - (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha) /a0;
+	    b1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cs0) /a0;
+	    b2 = A * ((A + 1.0f) + (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha ) /a0;
+	    a1 = 2.0f * ((A - 1.0f) - (A + 1.0f) * cs0 ) /a0;
+	    a2 = ((A + 1.0f) - (A - 1.0f) * cs0 - 2.0f * sqrt(A) * alpha) /a0;
 	    break;
 	case AePEAKINGEQ:
 	    a0 = 1.0f + alpha/A;
