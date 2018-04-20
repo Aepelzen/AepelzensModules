@@ -8,10 +8,10 @@
 struct Mixer : Module {
     enum ParamIds {
 	MASTER_GAIN_PARAM,
-	GAIN_PARAM,
 	MASTER_EQ_LOW_PARAM,
 	MASTER_EQ_MID_PARAM,
 	MASTER_EQ_HIGH_PARAM,
+	GAIN_PARAM,
 	MUTE_PARAM = GAIN_PARAM + NUM_CHANNELS,
 	EQ_LOW_PARAM = MUTE_PARAM + NUM_CHANNELS,
 	EQ_MID_PARAM = EQ_LOW_PARAM + NUM_CHANNELS,
@@ -22,15 +22,14 @@ struct Mixer : Module {
 	NUM_PARAMS = AUX2_PARAM + NUM_CHANNELS
     };
     enum InputIds {
-	CH1_INPUT,
-	CH1_GAIN_INPUT = CH1_INPUT + NUM_CHANNELS,
-	CH1_PAN_INPUT = CH1_GAIN_INPUT + NUM_CHANNELS,
-	AUX1_L_INPUT = CH1_GAIN_INPUT + NUM_CHANNELS,
-
+	AUX1_L_INPUT,
 	AUX1_R_INPUT,
 	AUX2_L_INPUT,
 	AUX2_R_INPUT,
-	NUM_INPUTS
+	CH1_INPUT,
+	CH1_GAIN_INPUT = CH1_INPUT + NUM_CHANNELS,
+	CH1_PAN_INPUT = CH1_GAIN_INPUT + NUM_CHANNELS,
+	NUM_INPUTS = CH1_PAN_INPUT + NUM_CHANNELS
     };
     enum OutputIds {
 	L_OUTPUT,
@@ -69,7 +68,11 @@ struct Mixer : Module {
 	AeFilter hp;
 	AeEqualizer hs;
 
-	bool mute;
+	//initialize out of range so it passes the check on initialisation
+	float lastLowGain = -25.0f;
+	float lastMidGain = -25.0f;
+	float lastHighGain = -25.0f;
+	bool mute = false;
     };
 
     mixerChannel channels[NUM_CHANNELS];
@@ -119,9 +122,19 @@ void Mixer::step() {
 	    float midGain = params[EQ_MID_PARAM + i].value;
 	    float highGain = params[EQ_HIGH_PARAM + i].value;
 
-	    channels[i].eqLow.setParams(125.0f, 0.45f, lowGain, AeEQType::AeLOWSHELVE);
-	    channels[i].eqMid.setParams(1200.0f, 0.52f, midGain, AeEQType::AePEAKINGEQ);
-	    channels[i].eqHigh.setParams(1800.0f, 0.42f, highGain, AeEQType::AeHIGHSHELVE);
+	    //only calculate coefficients when neccessary
+	    if(lowGain != channels[i].lastLowGain) {
+	    	channels[i].eqLow.setParams(125.0f, 0.45f, lowGain, AeEQType::AeLOWSHELVE);
+	    	channels[i].lastLowGain = lowGain;
+	    }
+	    if(midGain != channels[i].lastMidGain) {
+	    	channels[i].eqMid.setParams(1200.0f, 0.52f, midGain, AeEQType::AePEAKINGEQ);
+	    	channels[i].lastMidGain = midGain;
+	    }
+	    if(highGain != channels[i].lastHighGain) {
+	    	channels[i].eqHigh.setParams(1800.0f, 0.42f, highGain, AeEQType::AeHIGHSHELVE);
+	    	channels[i].lastHighGain = highGain;
+	    }
 
 	    float out = channels[i].eqLow.process(in);
 	    out = channels[i].eqMid.process(out);
@@ -133,7 +146,8 @@ void Mixer::step() {
 	    float rightGain = (pan > 0) ? gain : gain * (1 + pan);
 
 	    //outputs
-	    out = tanh(out) * 5.0f;
+	    //out = tanh(out) * 5.0f;
+	    out *= 5.0f;
 	    outL += out * leftGain;
 	    outR += out * rightGain;
 	    aux1L += out * leftGain * params[AUX1_PARAM + i].value;
@@ -200,7 +214,6 @@ struct MixerWidget : ModuleWidget {
 	}
 
 	addParam(ParamWidget::create<Davies1900hLargeRedKnob>(Vec(380, 310), module, Mixer::MASTER_GAIN_PARAM, -60.0f, 0.0f, -20.0f));
-
 	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 143), module, Mixer::MASTER_EQ_HIGH_PARAM, -7.0f, 7.0f, 0.0f));
 	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 198), module, Mixer::MASTER_EQ_MID_PARAM, -7.0f, 7.0f, 0.0f));
 	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 253), module, Mixer::MASTER_EQ_LOW_PARAM, -10.0f, 10.0f, 0.0f));
