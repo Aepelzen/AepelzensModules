@@ -1,6 +1,7 @@
 #include "aepelzen.hpp"
 #include "AeFilter.hpp"
 #include "dsp/vumeter.hpp"
+#include "dsp/digital.hpp"
 
 #define NUM_CHANNELS 6
 
@@ -41,7 +42,8 @@ struct Mixer : Module {
 	NUM_OUTPUTS
     };
     enum LightIds {
-	METER_L_LIGHT,
+	MUTE_LIGHT,
+	METER_L_LIGHT = MUTE_LIGHT + NUM_CHANNELS,
 	METER_R_LIGHT = METER_L_LIGHT + 6,
 	NUM_LIGHTS = METER_R_LIGHT + 6
     };
@@ -53,6 +55,9 @@ struct Mixer : Module {
 	    channels[i].hs.setParams(12000.0f, 0.6f, -6.0f, AeEQType::AeHIGHSHELVE);
 	}
 
+	maHp.setCutoff(35.0f, 0.8f, AeFilterType::AeHIGHPASS);
+	maHs.setParams(12000.0f, 0.8f, -2.0f, AeEQType::AeHIGHSHELVE);
+
 	meter.dBInterval = 10.0f;
     }
 
@@ -63,10 +68,20 @@ struct Mixer : Module {
 
 	AeFilter hp;
 	AeEqualizer hs;
+
+	bool mute;
     };
 
     mixerChannel channels[NUM_CHANNELS];
     VUMeter meter;
+    SchmittTrigger muteTrigger[NUM_CHANNELS];
+
+    //master EQ
+    AeEqualizerStereo eqMaLow;
+    AeEqualizerStereo eqMaMid;
+    AeEqualizerStereo eqMaHigh;
+    AeFilterStereo maHp;
+    AeEqualizerStereo maHs;
 
     void step() override;
 };
@@ -92,36 +107,54 @@ void Mixer::step() {
     for(int i=0;i<NUM_CHANNELS;i++) {
 	float in = inputs[CH1_INPUT + i].value /5.0f;
 
-	float gain = params[GAIN_PARAM + i].value * inputs[CH1_GAIN_INPUT + i].normalize(10.0f) / 10.0f;
-	float pan = params[PAN_PARAM + i].value;
-	float lowGain = params[EQ_LOW_PARAM + i].value;
-	float midGain = params[EQ_MID_PARAM + i].value;
-	float highGain = params[EQ_HIGH_PARAM + i].value;
+	if(muteTrigger[i].process(params[MUTE_PARAM + i].value)) {
+	    channels[i].mute = !channels[i].mute;
+	    lights[MUTE_LIGHT + i].value =  (channels[i].mute) ? 1.0f : 0.0f;
+	}
 
-	channels[i].eqLow.setParams(125.0f, 0.45f, lowGain, AeEQType::AeLOWSHELVE);
-	channels[i].eqMid.setParams(1200.0f, 0.52f, midGain, AeEQType::AePEAKINGEQ);
-	//eqHigh.setParams(7000.0f, 0.25f, highGain, AeEQType::AePEAKINGEQ);
-	channels[i].eqHigh.setParams(1800.0f, 0.42f, highGain, AeEQType::AeHIGHSHELVE);
+	if(!channels[i].mute) {
+	    float gain = params[GAIN_PARAM + i].value * inputs[CH1_GAIN_INPUT + i].normalize(10.0f) / 10.0f;
+	    float pan = params[PAN_PARAM + i].value;
+	    float lowGain = params[EQ_LOW_PARAM + i].value;
+	    float midGain = params[EQ_MID_PARAM + i].value;
+	    float highGain = params[EQ_HIGH_PARAM + i].value;
 
-	float out = channels[i].eqLow.process(in);
-	out = channels[i].eqMid.process(out);
-	out = channels[i].eqHigh.process(out);
-	out = channels[i].hp.process(out);
-	out = channels[i].hs.process(out);
+	    channels[i].eqLow.setParams(125.0f, 0.45f, lowGain, AeEQType::AeLOWSHELVE);
+	    channels[i].eqMid.setParams(1200.0f, 0.52f, midGain, AeEQType::AePEAKINGEQ);
+	    channels[i].eqHigh.setParams(1800.0f, 0.42f, highGain, AeEQType::AeHIGHSHELVE);
 
-	float leftGain = (pan < 0) ? gain : gain * (1 - pan);
-	float rightGain = (pan > 0) ? gain : gain * (1 + pan);
+	    float out = channels[i].eqLow.process(in);
+	    out = channels[i].eqMid.process(out);
+	    out = channels[i].eqHigh.process(out);
+	    out = channels[i].hp.process(out);
+	    out = channels[i].hs.process(out);
 
-	//outputs
-	out = tanh(out) * 5.0f;
-	outL += out * leftGain;
-	outR += out * rightGain;
-	aux1L += out * leftGain * params[AUX1_PARAM + i].value;
-	aux1R += out * rightGain * params[AUX1_PARAM + i].value;
-	aux2L += out * leftGain * params[AUX2_PARAM + i].value;
-	aux2R += out * rightGain * params[AUX2_PARAM + i].value;
+	    float leftGain = (pan < 0) ? gain : gain * (1 - pan);
+	    float rightGain = (pan > 0) ? gain : gain * (1 + pan);
+
+	    //outputs
+	    out = tanh(out) * 5.0f;
+	    outL += out * leftGain;
+	    outR += out * rightGain;
+	    aux1L += out * leftGain * params[AUX1_PARAM + i].value;
+	    aux1R += out * rightGain * params[AUX1_PARAM + i].value;
+	    aux2L += out * leftGain * params[AUX2_PARAM + i].value;
+	    aux2R += out * rightGain * params[AUX2_PARAM + i].value;
+	}
     }
 
+    //master EQ
+    eqMaLow.setParams(120.0f, 0.45f, params[MASTER_EQ_LOW_PARAM].value, AeEQType::AeLOWSHELVE);
+    eqMaMid.setParams(1300.0f, 0.95f, params[MASTER_EQ_MID_PARAM].value, AeEQType::AePEAKINGEQ);
+    eqMaHigh.setParams(1700.0f, 0.45f, params[MASTER_EQ_HIGH_PARAM].value, AeEQType::AeHIGHSHELVE);
+
+    eqMaLow.process(&outL, &outR);
+    eqMaMid.process(&outL, &outR);
+    eqMaHigh.process(&outL, &outR);
+    maHp.process(&outL,&outR);
+    maHs.process(&outL,&outR);
+
+    //outputs
     outL = (outL + aux1LIn + aux2LIn) * masterGain;
     outR = (outR + aux1RIn + aux2RIn) * masterGain;
     outputs[L_OUTPUT].value = outL;
@@ -131,7 +164,7 @@ void Mixer::step() {
     outputs[AUX2_L_OUTPUT].value = aux2L;
     outputs[AUX2_R_OUTPUT].value = aux2R;
 
-    //lights
+    //meter
     for (int i = 0; i < 6; i++){
 	meter.setValue(outL / 5.0f);
 	lights[METER_L_LIGHT + i].setBrightnessSmooth(meter.getBrightness(i));
@@ -158,6 +191,7 @@ struct MixerWidget : ModuleWidget {
 	    addParam(ParamWidget::create<BefacoTinyDarkKnob>(Vec(100 + i * 48, 245), module, Mixer::EQ_LOW_PARAM + i, -20.0f, 20.0f, 0.0f));
 
 	    addParam(ParamWidget::create<BefacoPush>(Vec(103 + i * 48, 290), module, Mixer::MUTE_PARAM + i, 0.0f, 1.0f, 0.0f));
+	    addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(99 + i * 48, 288), module, Mixer::MUTE_LIGHT + i));
 	    addParam(ParamWidget::create<BefacoTinyRedKnob>(Vec(100 + i * 48, 330), module, Mixer::GAIN_PARAM + i, 0.0f, 1.0f, 1.0f));
 
 	    addInput(Port::create<PJ301MPort>(Vec(5, 25 + i * 30), Port::INPUT, module, Mixer::CH1_INPUT + i));
@@ -167,13 +201,13 @@ struct MixerWidget : ModuleWidget {
 
 	addParam(ParamWidget::create<Davies1900hLargeRedKnob>(Vec(380, 310), module, Mixer::MASTER_GAIN_PARAM, -60.0f, 0.0f, -20.0f));
 
-	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 143), module, Mixer::MASTER_EQ_HIGH_PARAM, -10.0f, 10.0f, 0.0f));
-	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 198), module, Mixer::MASTER_EQ_MID_PARAM, -10.0f, 10.0f, 0.0f));
-	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 253), module, Mixer::MASTER_EQ_LOW_PARAM, -10.0f, 10.0f, 0.0f));	
+	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 143), module, Mixer::MASTER_EQ_HIGH_PARAM, -7.0f, 7.0f, 0.0f));
+	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 198), module, Mixer::MASTER_EQ_MID_PARAM, -7.0f, 7.0f, 0.0f));
+	addParam(ParamWidget::create<Davies1900hWhiteKnob>(Vec(389, 253), module, Mixer::MASTER_EQ_LOW_PARAM, -10.0f, 10.0f, 0.0f));
 	//meter
 	for(int i=0;i<6;i++) {
-	    addChild(ModuleLightWidget::create<MediumLight<RedLight>>(Vec(390, 60 + i * 12), module, Mixer::METER_L_LIGHT + i));
-	    addChild(ModuleLightWidget::create<MediumLight<RedLight>>(Vec(410, 60 + i * 12), module, Mixer::METER_R_LIGHT + i));
+	    addChild(ModuleLightWidget::create<MediumLight<RedLight>>(Vec(395, 60 + i * 13), module, Mixer::METER_L_LIGHT + i));
+	    addChild(ModuleLightWidget::create<MediumLight<RedLight>>(Vec(410, 60 + i * 13), module, Mixer::METER_R_LIGHT + i));
 	}
 
 	addOutput(Port::create<PJ301MPort>(Vec(380, 10), Port::OUTPUT, module, Mixer::L_OUTPUT));
