@@ -210,7 +210,7 @@ bool compareSampleInfos (SampleInfo i,SampleInfo j) {
 
 inline Frame<2> AeSampler::interpolateFrame(Frame<2> *buf, float phase) {
     float i = 0;
-    float frac = modf(phase,&i);
+    float frac = modff(phase,&i);
     int index = clamp((int)i,0,activeSample->bufferLength-2);
 
     Frame<2> out;
