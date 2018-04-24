@@ -58,6 +58,19 @@ struct AeFilterFrame : AeFilter {
 
     int channels = CHANNELS;
 
+    AeFilterFrame() {
+	init();
+    }
+
+    void init() {
+	for(int i=0;i<channels;i++) {
+	    x[0].samples[i] = 0.0f;
+	    x[1].samples[i] = 0.0f;
+	    y[0].samples[i] = 0.0f;
+	    y[1].samples[i] = 0.0f;
+	}
+    }
+
     Frame<CHANNELS> process(Frame<CHANNELS> in) {
 	Frame<CHANNELS> out;
 	for(int i=0;i<channels;i++) {
