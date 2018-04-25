@@ -85,6 +85,9 @@ struct Mixer : Module {
     AeEqualizerStereo eqMaHigh;
     AeFilterStereo maHp;
     AeEqualizerStereo maHs;
+    float lastMaLowGain = -25.0f;
+    float lastMaMidGain = -25.0f;
+    float lastMaHighGain = -25.0f;
 
     void step() override;
 };
@@ -108,7 +111,7 @@ void Mixer::step() {
     float aux2RIn = inputs[AUX2_R_INPUT].normalize(0.0f);
 
     for(int i=0;i<NUM_CHANNELS;i++) {
-	float in = inputs[CH1_INPUT + i].value /5.0f;
+	float in = inputs[CH1_INPUT + i].value;
 
 	if(muteTrigger[i].process(params[MUTE_PARAM + i].value)) {
 	    channels[i].mute = !channels[i].mute;
@@ -116,24 +119,26 @@ void Mixer::step() {
 	}
 
 	if(!channels[i].mute) {
-	    float gain = params[GAIN_PARAM + i].value * inputs[CH1_GAIN_INPUT + i].normalize(10.0f) / 10.0f;
-	    float pan = params[PAN_PARAM + i].value;
+	    float gain = pow(10, params[GAIN_PARAM + i].value/20.0f);
+	    gain *= inputs[CH1_GAIN_INPUT + i].normalize(10.0f) / 10.0f;
+
+	    float pan = clamp(params[PAN_PARAM + i].value + inputs[CH1_PAN_INPUT + i].value /5.0f, -1.0f, 1.0f);
 	    float lowGain = params[EQ_LOW_PARAM + i].value;
 	    float midGain = params[EQ_MID_PARAM + i].value;
 	    float highGain = params[EQ_HIGH_PARAM + i].value;
 
 	    //only calculate coefficients when neccessary
 	    if(lowGain != channels[i].lastLowGain) {
-	    	channels[i].eqLow.setParams(125.0f, 0.45f, lowGain, AeEQType::AeLOWSHELVE);
-	    	channels[i].lastLowGain = lowGain;
+		channels[i].eqLow.setParams(125.0f, 0.45f, lowGain, AeEQType::AeLOWSHELVE);
+		channels[i].lastLowGain = lowGain;
 	    }
 	    if(midGain != channels[i].lastMidGain) {
-	    	channels[i].eqMid.setParams(1200.0f, 0.52f, midGain, AeEQType::AePEAKINGEQ);
-	    	channels[i].lastMidGain = midGain;
+		channels[i].eqMid.setParams(1200.0f, 0.52f, midGain, AeEQType::AePEAKINGEQ);
+		channels[i].lastMidGain = midGain;
 	    }
 	    if(highGain != channels[i].lastHighGain) {
-	    	channels[i].eqHigh.setParams(1800.0f, 0.4f, highGain, AeEQType::AeHIGHSHELVE);
-	    	channels[i].lastHighGain = highGain;
+		channels[i].eqHigh.setParams(1800.0f, 0.4f, highGain, AeEQType::AeHIGHSHELVE);
+		channels[i].lastHighGain = highGain;
 	    }
 
 	    float out = channels[i].eqLow.process(in);
@@ -147,7 +152,7 @@ void Mixer::step() {
 
 	    //outputs
 	    //out = tanh(out) * 5.0f;
-	    out *= 5.0f;
+	    //out *= 5.0f;
 	    outL += out * leftGain;
 	    outR += out * rightGain;
 	    aux1L += out * leftGain * params[AUX1_PARAM + i].value;
@@ -158,9 +163,18 @@ void Mixer::step() {
     }
 
     //master EQ
-    eqMaLow.setParams(120.0f, 0.45f, params[MASTER_EQ_LOW_PARAM].value, AeEQType::AeLOWSHELVE);
-    eqMaMid.setParams(1300.0f, 0.95f, params[MASTER_EQ_MID_PARAM].value, AeEQType::AePEAKINGEQ);
-    eqMaHigh.setParams(1700.0f, 0.45f, params[MASTER_EQ_HIGH_PARAM].value, AeEQType::AeHIGHSHELVE);
+    if(lastMaLowGain != params[MASTER_EQ_LOW_PARAM].value) {
+	lastMaLowGain = params[MASTER_EQ_LOW_PARAM].value;
+	eqMaLow.setParams(120.0f, 0.45f, lastMaLowGain, AeEQType::AeLOWSHELVE);
+    }
+    if(lastMaMidGain != params[MASTER_EQ_MID_PARAM].value) {
+	lastMaMidGain = params[MASTER_EQ_MID_PARAM].value;
+	eqMaMid.setParams(1300.0f, 0.95f, lastMaMidGain, AeEQType::AePEAKINGEQ);
+    }
+    if(lastMaHighGain != params[MASTER_EQ_HIGH_PARAM].value) {
+	lastMaHighGain = params[MASTER_EQ_HIGH_PARAM].value;
+	eqMaHigh.setParams(1700.0f, 0.45f, lastMaHighGain, AeEQType::AeHIGHSHELVE);
+    }
 
     eqMaLow.process(&outL, &outR);
     eqMaMid.process(&outL, &outR);
@@ -206,7 +220,7 @@ struct MixerWidget : ModuleWidget {
 
 	    addParam(ParamWidget::create<BefacoPush>(Vec(103 + i * 48, 290), module, Mixer::MUTE_PARAM + i, 0.0f, 1.0f, 0.0f));
 	    addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(99 + i * 48, 288), module, Mixer::MUTE_LIGHT + i));
-	    addParam(ParamWidget::create<BefacoRedKnob>(Vec(100 + i * 48, 330), module, Mixer::GAIN_PARAM + i, 0.0f, 1.0f, 1.0f));
+	    addParam(ParamWidget::create<BefacoRedKnob>(Vec(100 + i * 48, 330), module, Mixer::GAIN_PARAM + i, -60.0f, 0.0f, -6.0f));
 
 	    addInput(Port::create<PJ301MPort>(Vec(5, 25 + i * 30), Port::INPUT, module, Mixer::CH1_INPUT + i));
 	    addInput(Port::create<PJ301MPort>(Vec(35, 25 + i * 30), Port::INPUT, module, Mixer::CH1_GAIN_INPUT + i));
