@@ -37,6 +37,30 @@ struct SnapTrimpot : Trimpot {
     }
 };
 
+struct BefacoWhiteKnob : SVGKnob {
+	BefacoWhiteKnob() {
+		minAngle = -0.75*M_PI;
+		maxAngle = 0.75*M_PI;
+		setSVG(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/BefacoWhiteKnob.svg")));
+	}
+};
+
+struct BefacoRedKnob : SVGKnob {
+	BefacoRedKnob() {
+		minAngle = -0.75*M_PI;
+		maxAngle = 0.75*M_PI;
+		setSVG(SVG::load(assetPlugin(plugin, "res/ComponentLibrary/BefacoRedKnob.svg")));
+	}
+};
+
+struct BefacoDarkKnob : SVGKnob {
+	BefacoDarkKnob() {
+		minAngle = -0.75*M_PI;
+		maxAngle = 0.75*M_PI;
+		setSVG(SVG::load(assetPlugin(plugin,"res/ComponentLibrary/BefacoDarkKnob.svg")));
+	}
+};
+
 template <typename BASE>
 struct BigLight : BASE {
 	BigLight() {
@@ -53,3 +77,4 @@ extern Model *modelWalker;
 extern Model *modelErwin;
 extern Model *modelWerner;
 extern Model *modelAeSampler;
+extern Model *modelMixer;
