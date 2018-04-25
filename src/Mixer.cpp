@@ -51,7 +51,7 @@ struct Mixer : Module {
 
 	for(int i=0;i<NUM_CHANNELS;i++) {
 	    channels[i].hp.setCutoff(35.0f, 0.8f, AeFilterType::AeHIGHPASS);
-	    channels[i].hs.setParams(12000.0f, 0.6f, -6.0f, AeEQType::AeHIGHSHELVE);
+	    channels[i].hs.setParams(12000.0f, 0.8f, -5.0f, AeEQType::AeHIGHSHELVE);
 	}
 
 	maHp.setCutoff(35.0f, 0.8f, AeFilterType::AeHIGHPASS);
@@ -132,7 +132,7 @@ void Mixer::step() {
 	    	channels[i].lastMidGain = midGain;
 	    }
 	    if(highGain != channels[i].lastHighGain) {
-	    	channels[i].eqHigh.setParams(1800.0f, 0.42f, highGain, AeEQType::AeHIGHSHELVE);
+	    	channels[i].eqHigh.setParams(1800.0f, 0.4f, highGain, AeEQType::AeHIGHSHELVE);
 	    	channels[i].lastHighGain = highGain;
 	    }
 
@@ -197,16 +197,16 @@ struct MixerWidget : ModuleWidget {
 	addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
 	for(int i=0;i<NUM_CHANNELS;i++) {
-	    addParam(ParamWidget::create<BefacoTinyWhiteKnob>(Vec(100 + i * 48, 10), module, Mixer::AUX1_PARAM + i, 0.0f, 1.0f, 0.0f));
-	    addParam(ParamWidget::create<BefacoTinyWhiteKnob>(Vec(100 + i * 48, 57), module, Mixer::AUX2_PARAM + i, 0.0f, 1.0f, 0.0f));
-	    addParam(ParamWidget::create<BefacoTinyWhiteKnob>(Vec(100 + i * 48, 104), module, Mixer::PAN_PARAM + i, -1.0f, 1.0f, 0.0f));
-	    addParam(ParamWidget::create<BefacoTinyDarkKnob>(Vec(100 + i * 48, 151), module, Mixer::EQ_HIGH_PARAM + i, -15.0f, 15.0f, 0.0f));
-	    addParam(ParamWidget::create<BefacoTinyDarkKnob>(Vec(100 + i * 48, 198), module, Mixer::EQ_MID_PARAM + i, -12.5f, 12.5f, 0.0f));
-	    addParam(ParamWidget::create<BefacoTinyDarkKnob>(Vec(100 + i * 48, 245), module, Mixer::EQ_LOW_PARAM + i, -20.0f, 20.0f, 0.0f));
+	    addParam(ParamWidget::create<BefacoWhiteKnob>(Vec(100 + i * 48, 10), module, Mixer::AUX1_PARAM + i, 0.0f, 1.0f, 0.0f));
+	    addParam(ParamWidget::create<BefacoWhiteKnob>(Vec(100 + i * 48, 57), module, Mixer::AUX2_PARAM + i, 0.0f, 1.0f, 0.0f));
+	    addParam(ParamWidget::create<BefacoWhiteKnob>(Vec(100 + i * 48, 104), module, Mixer::PAN_PARAM + i, -1.0f, 1.0f, 0.0f));
+	    addParam(ParamWidget::create<BefacoDarkKnob>(Vec(100 + i * 48, 151), module, Mixer::EQ_HIGH_PARAM + i, -15.0f, 15.0f, 0.0f));
+	    addParam(ParamWidget::create<BefacoDarkKnob>(Vec(100 + i * 48, 198), module, Mixer::EQ_MID_PARAM + i, -12.5f, 12.5f, 0.0f));
+	    addParam(ParamWidget::create<BefacoDarkKnob>(Vec(100 + i * 48, 245), module, Mixer::EQ_LOW_PARAM + i, -20.0f, 20.0f, 0.0f));
 
 	    addParam(ParamWidget::create<BefacoPush>(Vec(103 + i * 48, 290), module, Mixer::MUTE_PARAM + i, 0.0f, 1.0f, 0.0f));
 	    addChild(ModuleLightWidget::create<SmallLight<RedLight>>(Vec(99 + i * 48, 288), module, Mixer::MUTE_LIGHT + i));
-	    addParam(ParamWidget::create<BefacoTinyRedKnob>(Vec(100 + i * 48, 330), module, Mixer::GAIN_PARAM + i, 0.0f, 1.0f, 1.0f));
+	    addParam(ParamWidget::create<BefacoRedKnob>(Vec(100 + i * 48, 330), module, Mixer::GAIN_PARAM + i, 0.0f, 1.0f, 1.0f));
 
 	    addInput(Port::create<PJ301MPort>(Vec(5, 25 + i * 30), Port::INPUT, module, Mixer::CH1_INPUT + i));
 	    addInput(Port::create<PJ301MPort>(Vec(35, 25 + i * 30), Port::INPUT, module, Mixer::CH1_GAIN_INPUT + i));
@@ -239,4 +239,4 @@ struct MixerWidget : ModuleWidget {
     }
 };
 
-Model *modelMixer = Model::create<Mixer, MixerWidget>("Aepelzens Modules", "Mixer", "Mixer", MIXER_TAG);
+Model *modelMixer = Model::create<Mixer, MixerWidget>("Aepelzens Modules", "Mixer", "HexMix", MIXER_TAG);
