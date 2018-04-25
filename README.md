@@ -19,7 +19,7 @@ graphic below. As you can see, they provide a pretty serious boost
 (±12dB at 100, 1k and 10k Hz), so watch your levels, I'm not clipping
 the output. The Master-EQ is nearly identical but softer (only ±6 db).
 
-[channelEQs](https://github.com/Aepelzen/AepelzensModules/blob/master/images/hexmixFreqResponse.png)
+![channelEQs](https://github.com/Aepelzen/AepelzensModules/blob/master/images/hexmixFreqResponse.png)
 
 ## New Module: DrumSampler
 
