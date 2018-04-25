@@ -6,6 +6,21 @@
 
 New Dependency: [libsndfile](http://www.mega-nerd.com/libsndfile)
 
+## New Module: HexMix
+
+You are probably wondering if we really need another mixer. There are
+already various options to choose from and some of them are quite
+nice but for some reason nobody includes equalizers (at least none
+that i know of). So here is one that does. It is inspired by Befacos
+Hexmix. I took some freedom with the layout and made the whole thing
+more compact though. The equalizers are also modelled after the
+Hexmix. You can see the Frequency-Response of the channel-EQs in the
+graphic below. As you can see, they provide a pretty serious boost
+(±12dB at 100, 1k and 10k Hz), so watch your levels, I'm not clipping
+the output. The Master-EQ is nearly identical but softer (only ±6 db).
+
+[channelEQs](https://github.com/Aepelzen/AepelzensModules/blob/master/images/hexmixFreqResponse.png)
+
 ## New Module: DrumSampler
 
 This is a sampler that can load multiple samples. Samples can be selected manually or by CV. There are 2 ways to load samples. One by one using the '+'-button or loading a whole directory  using the '++' button. This will attempt to load all files in the directory (not recursive), so handle it with care (there is no builtin limit for the samplenumber). For a list of supported formats, see (http://www.mega-nerd.com/libsndfile/#Features). All samples are automatically converted to the global samplerate so you don't have to worry about that.
