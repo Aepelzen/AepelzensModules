@@ -9,7 +9,8 @@
 struct Erwin : Module {
     enum ParamIds {
 	CHANNEL_TRANSPOSE_PARAM,
-	NOTE_PARAM = CHANNEL_TRANSPOSE_PARAM + NUM_CHANNELS,
+	CHANNEL_MONITOR_PARAM = CHANNEL_TRANSPOSE_PARAM + NUM_CHANNELS,
+	NOTE_PARAM,
 	SELECT_PARAM = NOTE_PARAM + 12,
 	NUM_PARAMS
     };
@@ -26,7 +27,8 @@ struct Erwin : Module {
     };
     enum LightIds {
 	NOTE_LIGHT,
-	NUM_LIGHTS = NOTE_LIGHT + 12
+	CHANNEL_MONITOR_LIGHT = NOTE_LIGHT + 24,
+	NUM_LIGHTS = CHANNEL_MONITOR_LIGHT + NUM_CHANNELS
     };
 
     enum QModes {
@@ -49,7 +51,10 @@ struct Erwin : Module {
     int transposeSemi = 0;
     float freq = 0.0f;
 
+    unsigned int monitorChannel = 0;
+
     SchmittTrigger noteTriggers[12];
+    SchmittTrigger monitorTrigger;
 };
 
 json_t* Erwin::toJson() {
@@ -100,7 +105,7 @@ void Erwin::step() {
     //limit to 1 octave
     transposeSemi = (int)round(inputs[SEMI_INPUT].value * 1.2);
 
-    for(int y=0;y<NUM_CHANNELS;y++) {
+    for(unsigned int y=0;y<NUM_CHANNELS;y++) {
 	//normalize to first channel
 	if(!inputs[IN_INPUT + y].active)
 	    inputs[IN_INPUT + y].value = inputs[IN_INPUT].value;
@@ -146,6 +151,15 @@ void Erwin::step() {
 	    index += transposeSemi;
 
 	outputs[OUT_OUTPUT + y].value = octave + index * 1/12.0 + transposeOctave;
+
+	if(monitorChannel == y) {
+	    for(int i=0;i<12;i++) {
+		lights[NOTE_LIGHT + 2*i + 1].value = (modN(index,12) == i) ? 0.7f : 0.0f;
+	    }
+	    lights[CHANNEL_MONITOR_LIGHT + y].value =  1.0f;
+	}
+	else
+	    lights[CHANNEL_MONITOR_LIGHT + y].value =  0.0f;
     }
 
     // Note buttons
@@ -153,7 +167,16 @@ void Erwin::step() {
 	if (noteTriggers[i].process(params[NOTE_PARAM + i].value)) {
 	    currentScale[i] = !currentScale[i];
 	}
-	lights[NOTE_LIGHT + i].value = (currentScale[i] >= 1.0) ? 0.7 : 0;
+	//lights[NOTE_LIGHT + 2*i].value = (currentScale[i] >= 1.0 && !lights[NOTE_LIGHT + 2*i + 1].value) ? 0.7 : 0;
+	lights[NOTE_LIGHT + 2*i].value = (currentScale[i] >= 1.0) ? 0.7 : 0;
+    }
+
+    if(monitorTrigger.process(params[CHANNEL_MONITOR_PARAM].value)) {
+	monitorChannel = (monitorChannel + 1) % 5;
+	//reset lights
+	for(int i=0;i<12;i++) {
+	    lights[2*i + 1].value = 0.0f;
+	}
     }
 }
 
@@ -181,14 +204,18 @@ ErwinWidget::ErwinWidget(Erwin *module) : ModuleWidget(module) {
     addInput(Port::create<PJ301MPort>(Vec(76, 52), Port::INPUT, module, Erwin::SEMI_INPUT));
 
     for(int i=0;i<4;i++) {
-	addOutput(Port::create<PJ301MPort>(Vec(76, 245 + i*30), Port::OUTPUT, module, Erwin::OUT_OUTPUT + i));
-	addInput(Port::create<PJ301MPort>(Vec(76, 110 +i*30), Port::INPUT, module, Erwin::IN_INPUT + i));
+	addOutput(Port::create<PJ301MPort>(Vec(76, 247 + i*28), Port::OUTPUT, module, Erwin::OUT_OUTPUT + i));
+	addInput(Port::create<PJ301MPort>(Vec(76, 112 +i*28), Port::INPUT, module, Erwin::IN_INPUT + i));
+
+	addChild(ModuleLightWidget::create<SmallLight<GreenLight>>(Vec(74, 108 + i*28), module, Erwin::CHANNEL_MONITOR_LIGHT+i));
     }
 
-    addParam(ParamWidget::create<Trimpot>(Vec(16, 100), module, Erwin::CHANNEL_TRANSPOSE_PARAM, -4, 4, 0));
-    addParam(ParamWidget::create<Trimpot>(Vec(38, 100), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 1, -4, 4, 0));
-    addParam(ParamWidget::create<Trimpot>(Vec(16, 127.5), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 2, -4, 4, 0));
-    addParam(ParamWidget::create<Trimpot>(Vec(38, 127.5), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 3, -4, 4, 0));
+    addParam(ParamWidget::create<Trimpot>(Vec(16, 95), module, Erwin::CHANNEL_TRANSPOSE_PARAM, -4, 4, 0));
+    addParam(ParamWidget::create<Trimpot>(Vec(38, 95), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 1, -4, 4, 0));
+    addParam(ParamWidget::create<Trimpot>(Vec(16, 120), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 2, -4, 4, 0));
+    addParam(ParamWidget::create<Trimpot>(Vec(38, 120), module, Erwin::CHANNEL_TRANSPOSE_PARAM + 3, -4, 4, 0));
+
+    addParam(ParamWidget::create<LEDButton>(Vec(12, 147), module, Erwin::CHANNEL_MONITOR_PARAM, 0, 1, 0));
 
     addParam(ParamWidget::create<RoundBlackSnapKnob>(Vec(74, 17), module, Erwin::SELECT_PARAM, 0, 15, 0));
     addInput(Port::create<PJ301MPort>(Vec(22.5, 17), Port::INPUT, module, Erwin::SELECT_INPUT));
@@ -199,14 +226,14 @@ ErwinWidget::ErwinWidget(Erwin *module) : ModuleWidget(module) {
     for(int i=0; i<12; i++) {
 	if (i == 1 || i == 3 || i == 6 || i == 8 || i == 10 ) {
 	    addParam(ParamWidget::create<LEDBezel>(Vec(10,321.5 - black*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
-	    addChild(ModuleLightWidget::create<BigLight<GreenLight>>(Vec(12.5, 324 - black*30), module, Erwin::NOTE_LIGHT+i));
+	    addChild(ModuleLightWidget::create<BigLight<GreenRedLight>>(Vec(12.5, 324 - black*30), module, Erwin::NOTE_LIGHT+2*i));
 	    black++;
 	}
 	else {
 	    if(i == 4)
 		black++;
 	    addParam(ParamWidget::create<LEDBezel>(Vec(35,336.5 - white*30), module, Erwin::NOTE_PARAM + i, 0.0, 1.0, 0.0));
-	    addChild(ModuleLightWidget::create<BigLight<GreenLight>>(Vec(37.5, 339 - white*30), module, Erwin::NOTE_LIGHT+i));
+	    addChild(ModuleLightWidget::create<BigLight<GreenRedLight>>(Vec(37.5, 339 - white*30), module, Erwin::NOTE_LIGHT+2*i));
 	    white++;
 	}
     }
